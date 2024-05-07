@@ -4,7 +4,7 @@
 # Contributor: Daniel J Griffiths <ghost1227@archlinux.us>
 
 pkgname=chromium
-pkgver=124.0.6367.118
+pkgver=124.0.6367.155
 pkgrel=1
 _launcher_ver=8
 _manual_clone=0
@@ -32,7 +32,7 @@ source=(https://commondatastorage.googleapis.com/chromium-browser-official/chrom
         compiler-rt-adjust-paths.patch
         qt-6.7.patch
         use-oauth2-client-switches-as-default.patch)
-sha256sums=('8aa5a14aad1234b48b568da9ef23d6e0b1b72d7f4ca5c4039462e54e6ad45d96'
+sha256sums=('667d5b3522238b2458816b7e409540e47e9e70c8f2921f64342408fa2323bbc4'
             '213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a'
             'c2bc4e65ed2a4e23528dd10d5c15bf99f880b7bbb789cc720d451b78098a7e12'
             '75e1482d1b27c34ebe9d4bf27104fedcc219cdd95ce71fc41e77a486befd3f93'
