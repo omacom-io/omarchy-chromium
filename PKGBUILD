@@ -4,7 +4,7 @@
 # Contributor: Daniel J Griffiths <ghost1227@archlinux.us>
 
 pkgname=chromium
-pkgver=125.0.6422.141
+pkgver=126.0.6478.55
 pkgrel=1
 _launcher_ver=8
 _manual_clone=0
@@ -27,19 +27,17 @@ options=('!lto') # Chromium adds its own flags for ThinLTO
 source=(https://commondatastorage.googleapis.com/chromium-browser-official/chromium-$pkgver.tar.xz
         https://github.com/foutrelis/chromium-launcher/archive/v$_launcher_ver/chromium-launcher-$_launcher_ver.tar.gz
         https://gitlab.com/Matt.Jolly/chromium-patches/-/archive/${pkgver%%.*}/chromium-patches-${pkgver%%.*}.tar.bz2
-        fix-a-missing-build-dependency.patch
         allow-ANGLEImplementation-kVulkan.patch
         drop-flag-unsupported-by-clang17.patch
         compiler-rt-adjust-paths.patch
         use-oauth2-client-switches-as-default.patch)
-sha256sums=('9966b50279d0cfaaf4b58570387f0d526388f8d5f6dd990e3f083a55d8d8e603'
+sha256sums=('7ccef206f8c99e6a17b927b1b6d8018da808d75a0f46998282e0ca6cb80fe4c9'
             '213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a'
-            '58c8787bd215c4818893405dbb88c17b08bf13039fb5fbcb9dfe95ac51a86f3e'
-            '75e1482d1b27c34ebe9d4bf27104fedcc219cdd95ce71fc41e77a486befd3f93'
+            'daf0df74d2601c35fd66a746942d9ca3fc521ede92312f85af51d94c399fd6e0'
             '8f81059d79040ec598b5fb077808ec69d26d6c9cbebf9c4f4ea48b388a2596c5'
-            '3bd35dab1ded5d9e1befa10d5c6c4555fe0a76d909fb724ac57d0bf10cb666c1'
+            '028acc97299cec5d1ed9f456bbdc462807fa491277d266db2aa1d405d3cd753d'
             'b3de01b7df227478687d7517f61a777450dca765756002c80c4915f271e2d961'
-            '69d2f076223cab0cf1094ae58c39b5687a98f69bf4545414a35f6a4d2708ed83')
+            'a9b417b96daec33c9059065e15b3a92ae1bf4b59f89d353659b335d9e0379db6')
 
 if (( _manual_clone )); then
   source[0]=fetch-chromium-release
@@ -64,7 +62,7 @@ declare -gA _system_libs=(
   [libjpeg]=libjpeg
   [libpng]=libpng
   #[libvpx]=libvpx
-  #[libwebp]=libwebp  # //third_party/libavif:libavif_enc needs //third_party/libwebp:libwebp_sharpyuv
+  [libwebp]=libwebp
   [libxml]=libxml2
   [libxslt]=libxslt
   [opus]=opus
@@ -98,6 +96,7 @@ prepare() {
 
   # https://crbug.com/893950
   sed -i -e 's/\<xmlMalloc\>/malloc/' -e 's/\<xmlFree\>/free/' \
+         -e '1i #include <cstdlib>' \
     third_party/blink/renderer/core/xml/*.cc \
     third_party/blink/renderer/core/xml/parser/xml_document_parser.cc \
     third_party/libxml/chromium/*.cc \
@@ -109,7 +108,6 @@ prepare() {
   patch -Np1 -i ../use-oauth2-client-switches-as-default.patch
 
   # Upstream fixes
-  patch -Np1 -i ../fix-a-missing-build-dependency.patch
   patch -Np1 -i ../allow-ANGLEImplementation-kVulkan.patch
 
   # Drop compiler flag that needs newer clang
