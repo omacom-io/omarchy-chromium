@@ -1,4 +1,4 @@
-# Maintainer: Evangelos Foutras <evangelos@foutrelis.com>
+# Maintainer: Evangelos Foutras <foutrelis@archlinux.org>
 # Contributor: Pierre Schmitz <pierre@archlinux.de>
 # Contributor: Jan "heftig" Steffens <jan.steffens@gmail.com>
 # Contributor: Daniel J Griffiths <ghost1227@archlinux.us>
