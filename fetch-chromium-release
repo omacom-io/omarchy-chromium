@@ -24,7 +24,7 @@ EOF
 
 git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools
 export PATH+=":$PWD/depot_tools" DEPOT_TOOLS_UPDATE=0
-# system python fails to load six.moves module -- retest with 3.12.1
+# system python fails to load six.moves module
 #export VPYTHON_BYPASS='manually managed python not supported by chrome operations'
 
 git clone -b $VERSION --depth=2 https://chromium.googlesource.com/chromium/src
