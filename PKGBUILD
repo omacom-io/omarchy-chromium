@@ -5,7 +5,7 @@
 
 pkgname=chromium
 pkgver=133.0.6943.98
-pkgrel=1
+pkgrel=2
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
@@ -52,7 +52,7 @@ declare -gA _system_libs=(
   [fontconfig]=fontconfig
   [freetype]=freetype2
   [harfbuzz-ng]=harfbuzz
-  [icu]=icu
+  #[icu]=icu
   #[jsoncpp]=jsoncpp  # needs libstdc++
   #[libaom]=aom
   #[libavif]=libavif  # needs -DAVIF_ENABLE_EXPERIMENTAL_GAIN_MAP=ON
