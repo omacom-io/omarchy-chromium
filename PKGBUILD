@@ -28,12 +28,14 @@ optdepends=('pipewire: WebRTC desktop sharing under Wayland'
 options=('!lto') # Chromium adds its own flags for ThinLTO
 source=(https://commondatastorage.googleapis.com/chromium-browser-official/chromium-$pkgver-lite.tar.xz
         https://github.com/foutrelis/chromium-launcher/archive/v$_launcher_ver/chromium-launcher-$_launcher_ver.tar.gz
+        webrtc-fix-build-with-pipewire-1.4.patch
         skia-only-call-format_message-when-needed.patch
         compiler-rt-adjust-paths.patch
         increase-fortify-level.patch
         use-oauth2-client-switches-as-default.patch)
 sha256sums=('5f41260448edcaf2586fde025861828aeccacdc62aa72cee2bbfeb03630777d6'
             '213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a'
+            '74a2d428f7f09132c4a923e816a5a9333803f842003d650cd4a95a35e5457253'
             '271c7a767005b09e212808cfef7261dca00ea28ba7b808f69c3b5b9f202511d1'
             'b3de01b7df227478687d7517f61a777450dca765756002c80c4915f271e2d961'
             'd634d2ce1fc63da7ac41f432b1e84c59b7cceabf19d510848a7cff40c8025342'
@@ -106,6 +108,7 @@ prepare() {
   patch -Np1 -i ../use-oauth2-client-switches-as-default.patch
 
   # Upstream fixes
+  patch -Np1 -d third_party/webrtc <../webrtc-fix-build-with-pipewire-1.4.patch
   patch -Np1 -d third_party/skia <../skia-only-call-format_message-when-needed.patch
 
   # Allow libclang_rt.builtins from compiler-rt >= 16 to be used
