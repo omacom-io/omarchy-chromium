@@ -4,8 +4,8 @@
 # Contributor: Daniel J Griffiths <ghost1227@archlinux.us>
 
 pkgname=chromium
-pkgver=134.0.6998.35
-pkgrel=2
+pkgver=134.0.6998.88
+pkgrel=1
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
@@ -33,7 +33,7 @@ source=(https://commondatastorage.googleapis.com/chromium-browser-official/chrom
         compiler-rt-adjust-paths.patch
         increase-fortify-level.patch
         use-oauth2-client-switches-as-default.patch)
-sha256sums=('5f41260448edcaf2586fde025861828aeccacdc62aa72cee2bbfeb03630777d6'
+sha256sums=('aa079fa2a8ff15f1a8528d67f5c310cd7da41d6c9e607a38d57b0e5a11169d59'
             '213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a'
             '74a2d428f7f09132c4a923e816a5a9333803f842003d650cd4a95a35e5457253'
             '271c7a767005b09e212808cfef7261dca00ea28ba7b808f69c3b5b9f202511d1'
