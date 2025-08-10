@@ -6,7 +6,7 @@
 
 pkgname=chromium
 pkgver=139.0.7258.66
-pkgrel=1
+pkgrel=2
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
@@ -32,13 +32,15 @@ source=(https://commondatastorage.googleapis.com/chromium-browser-official/chrom
         chromium-138-nodejs-version-check.patch
         compiler-rt-adjust-paths.patch
         increase-fortify-level.patch
-        use-oauth2-client-switches-as-default.patch)
+        use-oauth2-client-switches-as-default.patch
+        omarchy-theme-switcher.patch)
 sha256sums=('8cd37b224dba4fc5e3c8ac98cc278d17a713a3b5a2f1dbb241ad94caca83d630'
             '213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a'
             '11a96ffa21448ec4c63dd5c8d6795a1998d8e5cd5a689d91aea4d2bdd13fb06e'
             'a6507371588ed4d87d6501220249264abfbcd814771cc1ba351e0ac6cc987400'
             'd634d2ce1fc63da7ac41f432b1e84c59b7cceabf19d510848a7cff40c8025342'
-            'e6da901e4d0860058dc2f90c6bbcdc38a0cf4b0a69122000f62204f24fa7e374')
+            'e6da901e4d0860058dc2f90c6bbcdc38a0cf4b0a69122000f62204f24fa7e374'
+            '84f04ae2a2aa27da1cd9772ab8f8fe3d4fc18a153621e0e178669a6b439b33d1')
 
 if (( _manual_clone )); then
   source[0]=fetch-chromium-release
@@ -116,6 +118,9 @@ prepare() {
 
   # Increase _FORTIFY_SOURCE level to match Arch's default flags
   patch -Np1 -i ../increase-fortify-level.patch
+
+  # Add theme command-line switches support
+  patch -Np1 -i ../omarchy-theme-switcher.patch
 
   # Fixes for building with libstdc++ instead of libc++
 
