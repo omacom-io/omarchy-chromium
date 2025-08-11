@@ -73,7 +73,7 @@ sed -i -e 's/\<xmlMalloc\>/malloc/' -e 's/\<xmlFree\>/free/' \
 # Sync dependencies
 echo -e "${YELLOW}Running gclient sync...${NC}"
 cd ..
-gclient sync --no-history --with_branch_heads --with_tags
+gclient sync --no-history --nohooks -D
 cd src
 
 # Create GN args for Release build
