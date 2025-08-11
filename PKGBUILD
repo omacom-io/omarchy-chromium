@@ -198,6 +198,8 @@ build() {
     'use_qt6=true'
     'moc_qt6_path="/usr/lib/qt6"'
     "google_api_key=\"$_google_api_key\""
+    'use_remoteexec=true'
+    'use_siso=true'
   )
 
   if [[ -n ${_system_libs[icu]+set} ]]; then
