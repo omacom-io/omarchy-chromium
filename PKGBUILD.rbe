@@ -257,7 +257,7 @@ build() {
   CXXFLAGS=${CXXFLAGS/-Wp,-D_GLIBCXX_ASSERTIONS}
 
   gn gen out/Release --args="${_flags[*]}"
-  ninja -C out/Release chrome chrome_sandbox chromedriver.unstripped
+  autoninja -C out/Release chrome chrome_sandbox chromedriver.unstripped
 }
 
 package() {
