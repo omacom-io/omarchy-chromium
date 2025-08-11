@@ -1,0 +1,72 @@
+#!/bin/bash
+
+set -e
+
+readonly VERSION=$1
+if [[ -z $VERSION ]]; then
+  echo >&2 'No version given as an argument'
+  exit 1
+fi
+
+# Use depot_tools from home directory
+export PATH="$HOME/depot_tools:$PATH"
+export DEPOT_TOOLS_UPDATE=0
+
+# Create working directory
+mkdir -p chromium-build
+cd chromium-build
+
+# Create .gclient with RBE configuration
+cat >.gclient <<EOF
+solutions = [
+  {
+    "name": "src",
+    "url": "https://chromium.googlesource.com/chromium/src.git",
+    "managed": False,
+    "custom_deps": {},
+    "custom_vars": {
+      "rbe_instance": "projects/rbe-chromium-untrusted/instances/default_instance",
+      "checkout_clang_tidy": True,
+    },
+  },
+]
+EOF
+
+# Fetch chromium (full source with all dependencies)
+echo "Fetching Chromium $VERSION with full source..."
+fetch --nohooks chromium
+
+# Checkout specific version
+cd src
+git checkout $VERSION
+
+# Go back to parent directory where .gclient is
+cd ..
+
+# Sync dependencies for this version (gclient sync needs to be run from directory with .gclient)
+echo "Running gclient sync with RBE configuration..."
+gclient sync --with_branch_heads --with_tags
+
+# Go back to src directory
+cd src
+
+# Generate required files
+echo "Generating build files..."
+build/util/lastchange.py -o build/util/LASTCHANGE
+build/util/lastchange.py -m GPU_LISTS_VERSION \
+  --revision-id-only --header gpu/config/gpu_lists_version.h
+build/util/lastchange.py -m SKIA_COMMIT_HASH \
+  -s third_party/skia --header skia/ext/skia_commit_hash.h
+build/util/lastchange.py \
+  -s third_party/dawn --revision gpu/webgpu/DAWN_VERSION
+
+# Update PGO profiles
+tools/update_pgo_profiles.py --target=linux update \
+  --gs-url-base=chromium-optimization-profiles/pgo_profiles
+
+# Clean up jdk
+find third_party/jdk/current -type f -delete
+
+# Move to expected location
+cd ..
+mv src ../chromium-$VERSION

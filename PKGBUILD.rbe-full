@@ -1,0 +1,254 @@
+# Maintainer: Evangelos Foutras <foutrelis@archlinux.org>
+# Maintainer: Christian Heusel <gromit@archlinux.org>
+# Contributor: Pierre Schmitz <pierre@archlinux.de>
+# Contributor: Jan "heftig" Steffens <jan.steffens@gmail.com>
+# Contributor: Daniel J Griffiths <ghost1227@archlinux.us>
+
+pkgname=chromium-rbe
+pkgver=139.0.7258.66
+pkgrel=1
+_launcher_ver=8
+pkgdesc="A web browser built for speed, simplicity, and security (RBE build)"
+arch=('x86_64')
+url="https://www.chromium.org/Home"
+license=('BSD-3-Clause')
+depends=('gtk3' 'nss' 'alsa-lib' 'xdg-utils' 'libxss' 'libcups' 'libgcrypt'
+         'ttf-liberation' 'systemd' 'dbus' 'libpulse' 'pciutils' 'libva'
+         'libffi' 'desktop-file-utils' 'hicolor-icon-theme')
+makedepends=('python' 'gn' 'ninja' 'clang' 'lld' 'gperf' 'nodejs' 'pipewire'
+             'rust' 'rust-bindgen' 'qt6-base' 'java-runtime-headless'
+             'git' 'python-httplib2' 'python-pyparsing' 'python-six')
+optdepends=('pipewire: WebRTC desktop sharing under Wayland'
+            'kdialog: support for native dialogs in Plasma'
+            'gtk4: for --gtk-version=4 (GTK4 IME might work better on Wayland)'
+            'org.freedesktop.secrets: password storage backend on GNOME / Xfce'
+            'kwallet: support for storing passwords in KWallet on Plasma'
+            'upower: Battery Status API support')
+options=('!lto') # Chromium adds its own flags for ThinLTO
+source=(fetch-chromium-full-rbe
+        https://github.com/foutrelis/chromium-launcher/archive/v$_launcher_ver/chromium-launcher-$_launcher_ver.tar.gz
+        use-oauth2-client-switches-as-default.patch
+        omarchy-theme-switcher.patch)
+sha256sums=('SKIP'
+            '213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a'
+            'e6da901e4d0860058dc2f90c6bbcdc38a0cf4b0a69122000f62204f24fa7e374'
+            '84f04ae2a2aa27da1cd9772ab8f8fe3d4fc18a153621e0e178669a6b439b33d1')
+
+# Google API keys (see https://www.chromium.org/developers/how-tos/api-keys)
+_google_api_key=AIzaSyDwr302FpOSkGRpLlUpPThNTDPbXcIn_FM
+
+prepare() {
+  # Fetch chromium with depot_tools
+  ./fetch-chromium-full-rbe $pkgver
+  cd chromium-$pkgver
+
+  # Allow building against system libraries in official builds
+  sed -i 's/OFFICIAL_BUILD/GOOGLE_CHROME_BUILD/' \
+    tools/generate_shim_headers/generate_shim_headers.py
+
+  # https://crbug.com/893950
+  sed -i -e 's/\<xmlMalloc\>/malloc/' -e 's/\<xmlFree\>/free/' \
+         -e '1i #include <cstdlib>' \
+    third_party/blink/renderer/core/xml/*.cc \
+    third_party/blink/renderer/core/xml/parser/xml_document_parser.cc \
+    third_party/libxml/chromium/*.cc
+
+  # Use the --oauth2-client-id= and --oauth2-client-secret= switches for
+  # setting GOOGLE_DEFAULT_CLIENT_ID and GOOGLE_DEFAULT_CLIENT_SECRET at
+  # runtime -- this allows signing into Chromium without baked-in values
+  patch -Np1 -i ../use-oauth2-client-switches-as-default.patch
+
+  # Add theme command-line switches support
+  patch -Np1 -i ../omarchy-theme-switcher.patch
+
+  # Link to system tools required by the build
+  mkdir -p third_party/node/linux/node-linux-x64/bin
+  ln -sf /usr/bin/node third_party/node/linux/node-linux-x64/bin/
+  ln -sf /usr/bin/java third_party/jdk/current/bin/
+
+  # Remove bundled libraries for which we will use the system copies
+  local _unwanted_bundled_libs=(
+    brotli
+    flac
+    fontconfig
+    freetype
+    harfbuzz-ng
+    libjpeg_turbo
+    libpng
+    libwebp
+    libxml
+    libxslt
+    opus
+    zlib
+  )
+  
+  local _lib
+  for _lib in ${_unwanted_bundled_libs[@]}; do
+    find "third_party/$_lib" -type f \
+      \! -path "third_party/$_lib/chromium/*" \
+      \! -path "third_party/$_lib/google/*" \
+      \! -path "third_party/harfbuzz-ng/utils/hb_scoped.h" \
+      \! -regex '.*\.\(gn\|gni\|isolate\)' \
+      -delete
+  done
+
+  ./build/linux/unbundle/replace_gn_files.py \
+    --system-libraries "${_unwanted_bundled_libs[@]}"
+}
+
+build() {
+  make -C chromium-launcher-$_launcher_ver
+
+  cd chromium-$pkgver
+
+  # Set build flags
+  export CC=clang
+  export CXX=clang++
+  export AR=ar
+  export NM=nm
+
+  local _flags=(
+    'is_official_build=true'
+    'symbol_level=0'
+    'treat_warnings_as_errors=false'
+    'fatal_linker_warnings=false'
+    'disable_fieldtrial_testing_config=true'
+    'blink_enable_generated_code_formatting=false'
+    'ffmpeg_branding="Chrome"'
+    'proprietary_codecs=true'
+    'rtc_use_pipewire=true'
+    'link_pulseaudio=true'
+    'use_custom_libcxx=true'
+    'use_sysroot=false'
+    'use_system_libffi=true'
+    'enable_hangout_services_extension=true'
+    'enable_widevine=true'
+    'enable_nacl=false'
+    'use_qt6=true'
+    'moc_qt6_path="/usr/lib/qt6"'
+    "google_api_key=\"$_google_api_key\""
+    'use_remoteexec=true'
+    'use_siso=true'
+    'rbe_cfg=instance=projects/rbe-chromium-untrusted/instances/default_instance'
+  )
+
+  # System libraries
+  _flags+=(
+    'use_system_libxml=true'
+    'use_system_fontconfig=true'
+    'use_system_libpng=true'
+    'use_system_harfbuzz=true'
+    'use_system_libjpeg=true'
+    'use_system_freetype=true'
+    'use_system_brotli=true'
+    'use_system_flac=true'
+    'use_system_opus=true'
+    'use_system_libwebp=true'
+  )
+
+  # Clang configuration
+  local _clang_version=$(clang --version | grep -m1 version | sed 's/.* \([0-9]\+\).*/\1/')
+  _flags+=(
+    'clang_base_path="/usr"'
+    'clang_use_chrome_plugins=false'
+    "clang_version=\"$_clang_version\""
+  )
+
+  # Rust configuration
+  export RUSTC_BOOTSTRAP=1
+  _flags+=(
+    'rust_sysroot_absolute="/usr"'
+    'rust_bindgen_root="/usr"'
+    "rustc_version=\"$(rustc --version)\""
+  )
+
+  # Facilitate deterministic builds
+  CFLAGS+='   -Wno-builtin-macro-redefined'
+  CXXFLAGS+=' -Wno-builtin-macro-redefined'
+  CPPFLAGS+=' -D__DATE__=  -D__TIME__=  -D__TIMESTAMP__='
+
+  # Do not warn about unknown warning options
+  CFLAGS+='   -Wno-unknown-warning-option'
+  CXXFLAGS+=' -Wno-unknown-warning-option'
+
+  # Let Chromium set its own symbol level
+  CFLAGS=${CFLAGS/-g }
+  CXXFLAGS=${CXXFLAGS/-g }
+
+  # Remove some flags
+  CFLAGS=${CFLAGS/-fexceptions}
+  CFLAGS=${CFLAGS/-fcf-protection}
+  CFLAGS=${CFLAGS/-fstack-clash-protection}
+  CXXFLAGS=${CXXFLAGS/-fexceptions}
+  CXXFLAGS=${CXXFLAGS/-fcf-protection}
+  CXXFLAGS=${CXXFLAGS/-fstack-clash-protection}
+  CXXFLAGS=${CXXFLAGS/-Wp,-D_GLIBCXX_ASSERTIONS}
+
+  # Generate build files
+  gn gen out/Release --args="${_flags[*]}"
+  
+  # Build with autoninja (handles RBE automatically)
+  autoninja -C out/Release chrome chrome_sandbox chromedriver.unstripped
+}
+
+package() {
+  cd chromium-launcher-$_launcher_ver
+  make PREFIX=/usr DESTDIR="$pkgdir" install
+  install -Dm644 LICENSE \
+    "$pkgdir/usr/share/licenses/chromium/LICENSE.launcher"
+
+  cd ../chromium-$pkgver
+
+  install -D out/Release/chrome "$pkgdir/usr/lib/chromium/chromium"
+  install -D out/Release/chromedriver.unstripped "$pkgdir/usr/bin/chromedriver"
+  install -Dm4755 out/Release/chrome_sandbox "$pkgdir/usr/lib/chromium/chrome-sandbox"
+
+  install -Dm644 chrome/installer/linux/common/desktop.template \
+    "$pkgdir/usr/share/applications/chromium.desktop"
+  install -Dm644 chrome/app/resources/manpage.1.in \
+    "$pkgdir/usr/share/man/man1/chromium.1"
+  sed -i \
+    -e 's/@@MENUNAME@@/Chromium/g' \
+    -e 's/@@PACKAGE@@/chromium/g' \
+    -e 's/@@USR_BIN_SYMLINK_NAME@@/chromium/g' \
+    "$pkgdir/usr/share/applications/chromium.desktop" \
+    "$pkgdir/usr/share/man/man1/chromium.1"
+
+  # Install resources
+  local toplevel_files=(
+    chrome_100_percent.pak
+    chrome_200_percent.pak
+    chrome_crashpad_handler
+    libqt6_shim.so
+    resources.pak
+    v8_context_snapshot.bin
+    icudtl.dat
+
+    # ANGLE
+    libEGL.so
+    libGLESv2.so
+
+    # SwiftShader ICD
+    libvk_swiftshader.so
+    libvulkan.so.1
+    vk_swiftshader_icd.json
+  )
+
+  cp "${toplevel_files[@]/#/out/Release/}" "$pkgdir/usr/lib/chromium/"
+  install -Dm644 -t "$pkgdir/usr/lib/chromium/locales" out/Release/locales/*.pak
+
+  # Icons
+  for size in 24 48 64 128 256; do
+    install -Dm644 "chrome/app/theme/chromium/product_logo_$size.png" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/chromium.png"
+  done
+
+  for size in 16 32; do
+    install -Dm644 "chrome/app/theme/default_100_percent/chromium/product_logo_$size.png" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/chromium.png"
+  done
+
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/chromium/LICENSE"
+}
+
+# vim:set ts=2 sw=2 et:
