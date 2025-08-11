@@ -39,8 +39,36 @@ git clean -fd
 
 # Apply patches
 echo -e "${YELLOW}Applying patches...${NC}"
+
+# Apply all patches from PKGBUILD
+echo "Applying chromium-138-nodejs-version-check.patch..."
+patch -Np1 -i "$PACKAGE_DIR/chromium-138-nodejs-version-check.patch"
+
+echo "Applying compiler-rt-adjust-paths.patch..."
+patch -Np1 -i "$PACKAGE_DIR/compiler-rt-adjust-paths.patch"
+
+echo "Applying increase-fortify-level.patch..."
+patch -Np1 -i "$PACKAGE_DIR/increase-fortify-level.patch"
+
+echo "Applying use-oauth2-client-switches-as-default.patch..."
 patch -Np1 -i "$PACKAGE_DIR/use-oauth2-client-switches-as-default.patch"
+
+echo "Applying omarchy-theme-switcher.patch..."
 patch -Np1 -i "$PACKAGE_DIR/omarchy-theme-switcher.patch"
+
+# Apply sed fixes from PKGBUILD
+echo -e "${YELLOW}Applying additional fixes...${NC}"
+
+# Allow building against system libraries in official builds
+sed -i 's/OFFICIAL_BUILD/GOOGLE_CHROME_BUILD/' \
+    tools/generate_shim_headers/generate_shim_headers.py
+
+# https://crbug.com/893950
+sed -i -e 's/\<xmlMalloc\>/malloc/' -e 's/\<xmlFree\>/free/' \
+       -e '1i #include <cstdlib>' \
+    third_party/blink/renderer/core/xml/*.cc \
+    third_party/blink/renderer/core/xml/parser/xml_document_parser.cc \
+    third_party/libxml/chromium/*.cc
 
 # Sync dependencies
 echo -e "${YELLOW}Running gclient sync...${NC}"

@@ -19,6 +19,12 @@ git checkout -f 139.0.7258.66
 
 # Apply patches from this directory
 PATCH_DIR="$(dirname "$0")"
+
+# Apply all patches from PKGBUILD
+echo "Applying patches..."
+patch -Np1 -i "$PATCH_DIR/chromium-138-nodejs-version-check.patch"
+patch -Np1 -i "$PATCH_DIR/compiler-rt-adjust-paths.patch"
+patch -Np1 -i "$PATCH_DIR/increase-fortify-level.patch"
 patch -Np1 -i "$PATCH_DIR/use-oauth2-client-switches-as-default.patch"
 patch -Np1 -i "$PATCH_DIR/omarchy-theme-switcher.patch"
 
