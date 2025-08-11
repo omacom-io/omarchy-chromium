@@ -12,6 +12,12 @@ fi
 export PATH="$HOME/depot_tools:$PATH"
 export DEPOT_TOOLS_UPDATE=0
 
+# Clean up any existing checkout
+if [ -d "chromium-build" ]; then
+  echo "Removing existing chromium-build directory..."
+  rm -rf chromium-build
+fi
+
 # Create working directory
 mkdir -p chromium-build
 cd chromium-build
