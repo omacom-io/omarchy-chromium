@@ -33,7 +33,7 @@ cd "$CHROMIUM_SRC"
 
 # Reset to clean state and checkout version
 echo -e "${YELLOW}Resetting to version $CHROMIUM_VERSION...${NC}"
-git fetch origin
+git fetch --depth=1 origin tag $CHROMIUM_VERSION
 git checkout -f $CHROMIUM_VERSION
 git clean -fd
 
@@ -73,7 +73,7 @@ sed -i -e 's/\<xmlMalloc\>/malloc/' -e 's/\<xmlFree\>/free/' \
 # Sync dependencies
 echo -e "${YELLOW}Running gclient sync...${NC}"
 cd ..
-gclient sync --with_branch_heads --with_tags
+gclient sync --no-history --with_branch_heads --with_tags
 cd src
 
 # Create GN args for Release build

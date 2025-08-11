@@ -30,7 +30,7 @@ patch -Np1 -i "$PATCH_DIR/omarchy-theme-switcher.patch"
 
 # Sync
 cd ..
-gclient sync
+gclient sync --no-history
 cd src
 
 # Configure (you can modify args.gn manually if needed)
