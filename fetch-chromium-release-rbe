@@ -25,8 +25,8 @@ solutions = [
 ]
 EOF
 
-git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools
-export PATH+=":$PWD/depot_tools" DEPOT_TOOLS_UPDATE=0
+# Use depot_tools from home directory
+export PATH="$HOME/depot_tools:$PATH" DEPOT_TOOLS_UPDATE=0
 # system python fails to load six.moves module
 #export VPYTHON_BYPASS='manually managed python not supported by chrome operations'
 

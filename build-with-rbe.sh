@@ -22,13 +22,17 @@ export SISO_ENABLE=1
 # Increase parallel jobs for distributed build
 export NINJA_JOBS=800
 
-# Ensure depot_tools is in PATH if not already
+# Add depot_tools to PATH
+export PATH="$HOME/depot_tools:$PATH"
+
+# Verify depot_tools is available
 if ! command -v gclient &> /dev/null; then
-    echo "depot_tools not found in PATH. Please install depot_tools first."
-    echo "git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git"
-    echo "export PATH=\"\$PATH:/path/to/depot_tools\""
+    echo "depot_tools not found at ~/depot_tools"
+    echo "Please ensure depot_tools is installed at: $HOME/depot_tools"
     exit 1
 fi
+
+echo "Using depot_tools from: $HOME/depot_tools"
 
 # Use the RBE-enabled PKGBUILD
 echo "Building with RBE-enabled PKGBUILD..."

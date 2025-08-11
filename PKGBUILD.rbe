@@ -34,7 +34,7 @@ source=(https://commondatastorage.googleapis.com/chromium-browser-official/chrom
         increase-fortify-level.patch
         use-oauth2-client-switches-as-default.patch
         omarchy-theme-switcher.patch)
-sha256sums=('c923c89b4b8f3f7ebd724e54d874d366bbb0f6482eb2db7ce8f6e66d9cb5cfb6'
+sha256sums=('b32a7cc15653d83686737aaf9ebf9a32321fad84a0bb1dcf8f876d08877200c8'
             '213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a'
             '11a96ffa21448ec4c63dd5c8d6795a1998d8e5cd5a689d91aea4d2bdd13fb06e'
             'a6507371588ed4d87d6501220249264abfbcd814771cc1ba351e0ac6cc987400'
