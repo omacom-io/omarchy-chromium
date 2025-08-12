@@ -10,6 +10,8 @@ pkgrel=2
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
+_use_chromium_src=1  # NEW: Use existing chromium source tree
+_chromium_src_path="$HOME/chromium/src"  # NEW: Path to existing chromium source
 pkgdesc="A web browser built for speed, simplicity, and security"
 arch=('x86_64')
 url="https://www.chromium.org/Home"
@@ -27,20 +29,26 @@ optdepends=('pipewire: WebRTC desktop sharing under Wayland'
             'kwallet: support for storing passwords in KWallet on Plasma'
             'upower: Battery Status API support')
 options=('!lto') # Chromium adds its own flags for ThinLTO
-source=(https://commondatastorage.googleapis.com/chromium-browser-official/chromium-$pkgver-lite.tar.xz
-        https://github.com/foutrelis/chromium-launcher/archive/v$_launcher_ver/chromium-launcher-$_launcher_ver.tar.gz
-        chromium-138-nodejs-version-check.patch
-        compiler-rt-adjust-paths.patch
-        increase-fortify-level.patch
-        use-oauth2-client-switches-as-default.patch
-        omarchy-theme-switcher.patch)
-sha256sums=('8cd37b224dba4fc5e3c8ac98cc278d17a713a3b5a2f1dbb241ad94caca83d630'
-            '213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a'
-            '11a96ffa21448ec4c63dd5c8d6795a1998d8e5cd5a689d91aea4d2bdd13fb06e'
-            'a6507371588ed4d87d6501220249264abfbcd814771cc1ba351e0ac6cc987400'
-            'd634d2ce1fc63da7ac41f432b1e84c59b7cceabf19d510848a7cff40c8025342'
-            'e6da901e4d0860058dc2f90c6bbcdc38a0cf4b0a69122000f62204f24fa7e374'
-            '84f04ae2a2aa27da1cd9772ab8f8fe3d4fc18a153621e0e178669a6b439b33d1')
+
+# NEW: Conditional source handling
+if (( _use_chromium_src )); then
+  # Only need launcher when using existing chromium source
+  source=(https://github.com/foutrelis/chromium-launcher/archive/v$_launcher_ver/chromium-launcher-$_launcher_ver.tar.gz)
+  sha256sums=('213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a')
+else
+  source=(https://commondatastorage.googleapis.com/chromium-browser-official/chromium-$pkgver-lite.tar.xz
+          https://github.com/foutrelis/chromium-launcher/archive/v$_launcher_ver/chromium-launcher-$_launcher_ver.tar.gz
+          chromium-138-nodejs-version-check.patch
+          compiler-rt-adjust-paths.patch
+          increase-fortify-level.patch
+          use-oauth2-client-switches-as-default.patch)
+  sha256sums=('8cd37b224dba4fc5e3c8ac98cc278d17a713a3b5a2f1dbb241ad94caca83d630'
+              '213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a'
+              '11a96ffa21448ec4c63dd5c8d6795a1998d8e5cd5a689d91aea4d2bdd13fb06e'
+              'a6507371588ed4d87d6501220249264abfbcd814771cc1ba351e0ac6cc987400'
+              'd634d2ce1fc63da7ac41f432b1e84c59b7cceabf19d510848a7cff40c8025342'
+              'e6da901e4d0860058dc2f90c6bbcdc38a0cf4b0a69122000f62204f24fa7e374')
+fi
 
 if (( _manual_clone )); then
   source[0]=fetch-chromium-release
@@ -87,6 +95,22 @@ depends+=(${_system_libs[@]})
 _google_api_key=AIzaSyDwr302FpOSkGRpLlUpPThNTDPbXcIn_FM
 
 prepare() {
+  # NEW: Handle existing chromium source
+  if (( _use_chromium_src )); then
+    echo "Using existing Chromium source at $_chromium_src_path"
+    if [[ ! -d "$_chromium_src_path" ]]; then
+      echo "ERROR: Chromium source directory not found at $_chromium_src_path"
+      exit 1
+    fi
+    if [[ ! -d "$_chromium_src_path/out/Release" ]]; then
+      echo "ERROR: No Release build found at $_chromium_src_path/out/Release"
+      exit 1
+    fi
+    # Create symlink to existing source (don't modify the original)
+    ln -sf "$_chromium_src_path" "chromium-$pkgver"
+    return 0
+  fi
+
   if (( _manual_clone )); then
     ./fetch-chromium-release $pkgver
   fi
@@ -158,6 +182,14 @@ prepare() {
 }
 
 build() {
+  # NEW: Skip build if using existing chromium source
+  if (( _use_chromium_src )); then
+    echo "Skipping build - using existing Chromium build from $_chromium_src_path"
+    # Still build the launcher
+    make -C chromium-launcher-$_launcher_ver
+    return 0
+  fi
+
   make -C chromium-launcher-$_launcher_ver
 
   cd chromium-$pkgver
@@ -263,7 +295,12 @@ package() {
   install -Dm644 LICENSE \
     "$pkgdir/usr/share/licenses/chromium/LICENSE.launcher"
 
-  cd ../chromium-$pkgver
+  # NEW: Handle different source locations
+  if (( _use_chromium_src )); then
+    cd "$_chromium_src_path"
+  else
+    cd ../chromium-$pkgver
+  fi
 
   install -D out/Release/chrome "$pkgdir/usr/lib/chromium/chromium"
   install -D out/Release/chromedriver.unstripped "$pkgdir/usr/bin/chromedriver"
