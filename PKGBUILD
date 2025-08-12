@@ -10,8 +10,9 @@ pkgrel=3
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
-_use_chromium_src=1  # NEW: Use existing chromium source tree
-_chromium_src_path="$HOME/chromium/src"  # NEW: Path to existing chromium source
+_use_chromium_src=1  # Use official chromium source checkout
+_chromium_upstream_src="$HOME/omarchy-chromium-src"  # Path to chromium checkout (change to your path)
+_skip_build=0  # Set to 1 to skip build (for packaging pre-built binaries)
 pkgdesc="A web browser built for speed, simplicity, and security"
 arch=('x86_64')
 url="https://www.chromium.org/Home"
@@ -95,19 +96,86 @@ depends+=(${_system_libs[@]})
 _google_api_key=AIzaSyDwr302FpOSkGRpLlUpPThNTDPbXcIn_FM
 
 prepare() {
-  # NEW: Handle existing chromium source
+  # Handle official chromium source checkout
   if (( _use_chromium_src )); then
-    echo "Using existing Chromium source at $_chromium_src_path"
-    if [[ ! -d "$_chromium_src_path" ]]; then
-      echo "ERROR: Chromium source directory not found at $_chromium_src_path"
-      exit 1
+    echo "Using official Chromium source checkout at $_chromium_upstream_src"
+    
+    # Skip prepare if we're just packaging pre-built binaries
+    if (( _skip_build )); then
+      echo "Skipping source preparation (using pre-built binaries)"
+      # Create symlink for compatibility with package()
+      ln -sf "$_chromium_upstream_src/src" "$srcdir/chromium-$pkgver"
+      return 0
     fi
-    if [[ ! -d "$_chromium_src_path/out/Release" ]]; then
-      echo "ERROR: No Release build found at $_chromium_src_path/out/Release"
-      exit 1
+    
+    # Setup depot_tools if not already in PATH
+    if ! command -v fetch &> /dev/null; then
+      if [[ ! -d "$HOME/depot_tools" ]]; then
+        echo "Cloning depot_tools..."
+        git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$HOME/depot_tools"
+      fi
+      export PATH="$HOME/depot_tools:$PATH"
     fi
-    # Create symlink to existing source (don't modify the original)
-    ln -sf "$_chromium_src_path" "chromium-$pkgver"
+    
+    # Check if checkout exists
+    if [[ -d "$_chromium_upstream_src/src" ]]; then
+      echo "Chromium checkout already exists at $_chromium_upstream_src/src, keeping it untouched"
+      cd "$_chromium_upstream_src/src"
+      
+      # Just checkout the correct version
+      echo "Checking out version $pkgver..."
+      git fetch --tags
+      git checkout "$pkgver"
+      
+    else
+      # Fresh checkout needed
+      echo "Creating new Chromium checkout at $_chromium_upstream_src"
+      mkdir -p "$_chromium_upstream_src"
+      cd "$_chromium_upstream_src"
+      
+      echo "Fetching chromium (this will take a while)..."
+      fetch --nohooks chromium
+      
+      cd src
+      
+      # Checkout the specific version
+      echo "Checking out version $pkgver..."
+      git checkout "$pkgver"
+      
+      echo "Running gclient sync..."
+      gclient sync -D
+      
+      echo "Running gclient runhooks..."
+      gclient runhooks
+    fi
+    
+    # Generate build files if not already present
+    if [[ ! -d "out/Release" ]]; then
+      echo "Generating build configuration..."
+      mkdir -p out/Release
+      
+      # Copy over the args.gn file
+      if [[ -f "$srcdir/../chromium.args.gn" ]]; then
+        cp "$srcdir/../chromium.args.gn" out/Release/args.gn
+      else
+        echo "ERROR: chromium.args.gn not found in package directory"
+        exit 1
+      fi
+      
+      gn gen out/Release
+    fi
+    
+    # Apply patches to the upstream source
+    echo "Applying patches..."
+    for patch in "$srcdir"/../*.patch; do
+      if [[ -f "$patch" ]]; then
+        echo "Applying $(basename "$patch")..."
+        patch -Np1 -i "$patch" || true  # Continue even if patch fails (might be already applied)
+      fi
+    done
+    
+    # Create symlink for compatibility with rest of PKGBUILD
+    ln -sf "$_chromium_upstream_src/src" "$srcdir/chromium-$pkgver"
     return 0
   fi
 
@@ -182,10 +250,27 @@ prepare() {
 }
 
 build() {
-  # NEW: Skip build if using existing chromium source
+  # Handle official chromium source build
   if (( _use_chromium_src )); then
-    echo "Skipping build - using existing Chromium build from $_chromium_src_path"
-    # Still build the launcher
+    if (( _skip_build )); then
+      echo "Skipping Chromium build (using pre-built binaries from $_chromium_upstream_src/src)"
+    else
+      echo "Building from official Chromium source at $_chromium_upstream_src/src"
+      
+      # Setup depot_tools if not already in PATH
+      if ! command -v autoninja &> /dev/null; then
+        export PATH="$HOME/depot_tools:$PATH"
+      fi
+      
+      cd "$_chromium_upstream_src/src"
+      
+      # Build with ninja
+      echo "Building Chromium (this will take a while)..."
+      autoninja -C out/Release chrome chrome_sandbox chromedriver.unstripped
+    fi
+    
+    # Always build the launcher
+    cd "$srcdir"
     make -C chromium-launcher-$_launcher_ver
     return 0
   fi
@@ -295,9 +380,9 @@ package() {
   install -Dm644 LICENSE \
     "$pkgdir/usr/share/licenses/chromium/LICENSE.launcher"
 
-  # NEW: Handle different source locations
+  # Handle different source locations
   if (( _use_chromium_src )); then
-    cd "$_chromium_src_path"
+    cd "$_chromium_upstream_src/src"
   else
     cd ../chromium-$pkgver
   fi
