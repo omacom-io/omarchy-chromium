@@ -4,9 +4,9 @@
 # Contributor: Jan "heftig" Steffens <jan.steffens@gmail.com>
 # Contributor: Daniel J Griffiths <ghost1227@archlinux.us>
 
-pkgname=chromium
+pkgname=omarchy-chromium
 pkgver=139.0.7258.66
-pkgrel=2
+pkgrel=3
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
