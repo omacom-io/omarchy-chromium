@@ -120,12 +120,55 @@ prepare() {
     # Check if checkout exists
     if [[ -d "$_chromium_upstream_src/src" ]]; then
       echo "Chromium checkout already exists at $_chromium_upstream_src/src, keeping it untouched"
-      cd "$_chromium_upstream_src/src"
+      cd "$_chromium_upstream_src"
       
-      # Just checkout the correct version
+      # Update .gclient to include PGO profiles
+      echo "Updating .gclient to include PGO profiles..."
+      cat > .gclient <<EOF
+solutions = [
+  {
+    "name": "src",
+    "url": "https://chromium.googlesource.com/chromium/src.git",
+    "managed": False,
+    "custom_deps": {},
+    "custom_vars": {
+      "checkout_pgo_profiles": True,
+    },
+  },
+]
+EOF
+      
+      cd src
+      
+      # Optimize git for massive repos
+      echo "Optimizing git for large repository..."
+      git config core.deltaBaseCacheLimit 2g
+      git config pack.windowMemory 2g
+      git config pack.packSizeLimit 2g
+      git config http.postBuffer 1048576000
+      git config core.bigFileThreshold 512m
+      git config core.compression 0
+      git config core.looseCompression 0
+      git config pack.compression 0
+      git config pack.threads 0
+      git config index.threads true
+      git config fetch.unpackLimit 1
+      git config fetch.writeCommitGraph false
+      git config receive.unpackLimit 1
+      git config feature.manyFiles true
+      
+      # Simple checkout - already have the tag
       echo "Checking out version $pkgver..."
-      git fetch --tags
-      git checkout "$pkgver"
+      git checkout -f "$pkgver"
+      
+      # Only sync dependencies, not the main src repo
+      echo "Syncing dependencies..."
+      cd "$_chromium_upstream_src"
+      gclient sync --nohooks --no-history --shallow --delete_unversioned_trees
+      
+      cd src
+      echo "Running gclient runhooks..."
+      gclient runhooks
       
     else
       # Fresh checkout needed
@@ -136,18 +179,58 @@ prepare() {
       echo "Fetching chromium (this will take a while)..."
       fetch --nohooks chromium
       
+      # Update .gclient to include PGO profiles
+      echo "Updating .gclient to include PGO profiles..."
+      cat > .gclient <<EOF
+solutions = [
+  {
+    "name": "src",
+    "url": "https://chromium.googlesource.com/chromium/src.git",
+    "managed": False,
+    "custom_deps": {},
+    "custom_vars": {
+      "checkout_pgo_profiles": True,
+    },
+  },
+]
+EOF
+      
       cd src
+      
+      # Optimize git for massive repos
+      echo "Optimizing git for large repository..."
+      git config core.deltaBaseCacheLimit 2g
+      git config pack.windowMemory 2g
+      git config pack.packSizeLimit 2g
+      git config http.postBuffer 1048576000
+      git config core.bigFileThreshold 512m
+      git config core.compression 0
+      git config core.looseCompression 0
+      git config pack.compression 0
+      git config pack.threads 0
+      git config index.threads true
+      git config fetch.unpackLimit 1
+      git config fetch.writeCommitGraph false
+      git config receive.unpackLimit 1
+      git config feature.manyFiles true
       
       # Checkout the specific version
       echo "Checking out version $pkgver..."
-      git checkout "$pkgver"
+      git checkout -f "$pkgver"
       
-      echo "Running gclient sync..."
-      gclient sync -D
+      # Sync dependencies
+      echo "Syncing dependencies..."
+      cd "$_chromium_upstream_src"
+      gclient sync --nohooks --no-history --shallow --delete_unversioned_trees
       
+      cd src
       echo "Running gclient runhooks..."
       gclient runhooks
     fi
+    
+    # Fix partition_alloc include path issue
+    echo "Creating partition_alloc symlink..."
+    ln -sf base/allocator/partition_allocator/src/partition_alloc partition_alloc
     
     # Generate build files if not already present
     if [[ ! -d "out/Release" ]]; then
@@ -169,6 +252,21 @@ prepare() {
     echo "Applying patches..."
     for patch in "$srcdir"/../*.patch; do
       if [[ -f "$patch" ]]; then
+        # Skip patches that are incompatible with bundled toolchain
+        case "$(basename "$patch")" in
+          "compiler-rt-adjust-paths.patch")
+            echo "Skipping $(basename "$patch") (incompatible with bundled toolchain)"
+            continue
+            ;;
+          "chromium-138-nodejs-version-check.patch")
+            echo "Skipping $(basename "$patch") (bundled Node.js doesn't need version check)"
+            continue
+            ;;
+          "increase-fortify-level.patch")
+            echo "Skipping $(basename "$patch") (causes FORTIFY_SOURCE conflicts with bundled build)"
+            continue
+            ;;
+        esac
         echo "Applying $(basename "$patch")..."
         patch -Np1 -i "$patch" || true  # Continue even if patch fails (might be already applied)
       fi
@@ -266,6 +364,7 @@ build() {
       
       # Build with ninja
       echo "Building Chromium (this will take a while)..."
+      export NINJA_STATUS="[%f/%t (%p%%) %o/s %es] " 
       autoninja -C out/Release chrome chrome_sandbox chromedriver.unstripped
     fi
     
