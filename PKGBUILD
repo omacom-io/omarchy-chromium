@@ -3,7 +3,7 @@
 
 pkgname=omarchy-chromium
 pkgver=139.0.7258.66
-pkgrel=7
+pkgrel=8
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
@@ -225,9 +225,6 @@ EOF
       gclient runhooks
     fi
     
-    # Fix partition_alloc include path issue
-    echo "Creating partition_alloc symlink..."
-    ln -sf base/allocator/partition_allocator/src/partition_alloc partition_alloc
     
     # Generate build files if not already present
     if [[ ! -d "out/Release" ]]; then
