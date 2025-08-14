@@ -96,9 +96,47 @@ The project consists of three main components:
 
 ## 📜 Automation Scripts
 
-### 🚀 `do_update.sh` - Build & Release
+### 🎯 `smart_update.sh` - Upstream-Aware Updates (Recommended)
 
-Automates the complete release pipeline:
+**Only builds and pushes to AUR when upstream Chromium has changes!**
+
+This is the **recommended way** to keep your package updated - it ensures you only push to AUR when there's an actual new Chromium release from Arch Linux.
+
+#### Usage:
+```bash
+# Check upstream and update if needed
+./smart_update.sh
+```
+
+#### What it does:
+- ✅ Checks if Arch Linux has released a new Chromium version
+- ✅ Only proceeds if there are upstream changes
+- ✅ Automatically runs update_to_upstream.sh and do_update.sh
+- ✅ Prevents unnecessary AUR updates
+- ✅ Saves build time and resources
+
+---
+
+### 🔍 `check_upstream.sh` - Check for Updates
+
+Checks if the upstream Arch Linux Chromium package has a newer version than ours.
+
+#### Usage:
+```bash
+# Check if updates are available
+./check_upstream.sh
+```
+
+#### Returns:
+- Exit code 0: Update available
+- Exit code 1: Already up-to-date
+- Exit code 2: Error occurred
+
+---
+
+### 🚀 `do_update.sh` - Manual Build & Release
+
+Use this for hotfixes, patches, or when you need to force a release regardless of upstream status.
 
 1. **Increments** `pkgrel` by one
 2. **Builds** package using `makepkg -s`
@@ -107,23 +145,21 @@ Automates the complete release pipeline:
 
 #### Usage:
 ```bash
-# Full build and release
+# Full build and release (for patches/fixes)
 ./do_update.sh
 
 # Skip build (use existing package)
 SKIP_BUILD=1 ./do_update.sh
 ```
 
-#### What it does:
-- ✅ Auto-increments version number
-- ✅ Builds Chromium package (~3-4 hours)
-- ✅ Creates GitHub release with binary
-- ✅ Updates AUR with new checksums
-- ✅ Pushes everything automatically
+#### When to use:
+- When you've made patches or fixes
+- For emergency updates
+- When smart_update.sh says no update but you need to release
 
 ---
 
-### 🔄 `update_to_upstream.sh` - Track Upstream
+### 🔄 `update_to_upstream.sh` - Sync with Upstream
 
 Synchronizes with the latest official Chromium release:
 
@@ -136,13 +172,11 @@ Synchronizes with the latest official Chromium release:
 
 #### Usage:
 ```bash
-# Check and update to latest upstream
+# Manually sync to latest upstream
 ./update_to_upstream.sh
 
 # Then build
 makepkg -s
-# Or release directly
-./do_update.sh
 ```
 
 #### What it does:
@@ -153,13 +187,19 @@ makepkg -s
 
 ## 🔄 Typical Workflow
 
-### Regular Update (same Chromium version)
+### Recommended: Smart Update (checks upstream first)
+```bash
+cd ~/omarchy-chromium
+./smart_update.sh  # Only builds if Arch has new Chromium
+```
+
+### Manual Update for Patches/Fixes
 ```bash
 cd ~/omarchy-chromium
 ./do_update.sh  # Increments pkgrel, builds, releases
 ```
 
-### Update to New Chromium Version
+### Update to New Chromium Version (manual)
 ```bash
 cd ~/omarchy-chromium
 ./update_to_upstream.sh  # Updates to latest Chromium
@@ -170,6 +210,12 @@ cd ~/omarchy-chromium
 ```bash
 cd ~/omarchy-chromium
 SKIP_BUILD=1 ./do_update.sh  # Uses existing package
+```
+
+### Check if updates are available
+```bash
+cd ~/omarchy-chromium
+./check_upstream.sh  # Shows if Arch has newer version
 ```
 
 ## 🛠️ Build Configuration
