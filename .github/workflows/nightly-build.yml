@@ -53,6 +53,35 @@ jobs:
           echo "Upstream changes detected, proceeding with build..."
           ./smart_update.sh
           
+      - name: Commit PKGBUILD changes (upstream update)
+        if: steps.upstream_check.outputs.upstream_changed == 'true'
+        run: |
+          echo "=== Committing PKGBUILD Changes ==="
+          
+          # Configure git for the action
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Check if PKGBUILD was modified
+          if git diff --quiet PKGBUILD; then
+            echo "No PKGBUILD changes to commit"
+          else
+            echo "PKGBUILD was modified, committing changes..."
+            
+            # Get version info for commit message
+            PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+            PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+            
+            git add PKGBUILD
+            git commit -m "Update to Chromium ${PKGVER}-${PKGREL}
+
+Automated upstream update from nightly build workflow."
+            
+            # Push the commit
+            git push
+            echo "✅ PKGBUILD changes committed and pushed"
+          fi
+          
       - name: Run forced build (manual trigger)
         if: steps.upstream_check.outputs.upstream_changed == 'false' && inputs.force_build == true
         run: |
@@ -60,6 +89,35 @@ jobs:
           echo "No upstream changes but force_build requested..."
           chmod +x do_update.sh
           ./do_update.sh
+          
+      - name: Commit PKGBUILD changes (forced build)
+        if: steps.upstream_check.outputs.upstream_changed == 'false' && inputs.force_build == true
+        run: |
+          echo "=== Committing PKGBUILD Changes (Forced Build) ==="
+          
+          # Configure git for the action
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Check if PKGBUILD was modified
+          if git diff --quiet PKGBUILD; then
+            echo "No PKGBUILD changes to commit"
+          else
+            echo "PKGBUILD was modified, committing changes..."
+            
+            # Get version info for commit message
+            PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+            PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+            
+            git add PKGBUILD
+            git commit -m "Increment pkgrel to ${PKGVER}-${PKGREL}
+
+Forced build requested via GitHub Actions workflow."
+            
+            # Push the commit
+            git push
+            echo "✅ PKGBUILD changes committed and pushed"
+          fi
           
       - name: No action needed
         if: steps.upstream_check.outputs.upstream_changed == 'false' && inputs.force_build != true
