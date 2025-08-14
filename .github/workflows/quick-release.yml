@@ -1,0 +1,81 @@
+name: Quick Release (Skip Build)
+
+on:
+  push:
+    branches:
+      - 'release-test/**'
+    tags:
+      - 'quick-release-*'
+  workflow_dispatch:
+    inputs:
+      increment_pkgrel:
+        description: 'Increment pkgrel before release'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  quick-release:
+    runs-on: self-hosted
+    timeout-minutes: 30  # Much shorter since we skip the build
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up environment
+        run: |
+          echo "=== Quick Release Environment ==="
+          echo "Started at: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "Trigger: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Increment pkgrel: ${{ inputs.increment_pkgrel }}"
+          echo "This workflow uses SKIP_BUILD=1 for testing AUR releases"
+          
+      - name: Check for existing package
+        run: |
+          echo "=== Checking for Package Files ==="
+          
+          # Get current package info
+          PKGNAME=$(grep '^pkgname=' PKGBUILD | cut -d'=' -f2)
+          PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+          PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+          
+          # Check if package exists
+          PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
+          
+          if [[ -f "$PACKAGE_FILE" ]]; then
+            echo "✅ Found existing package: $PACKAGE_FILE"
+            PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
+            echo "Package size: $PACKAGE_SIZE"
+          else
+            echo "❌ Package file not found: $PACKAGE_FILE"
+            echo "Available package files:"
+            ls -la *.pkg.tar.zst || echo "No package files found"
+            exit 1
+          fi
+          
+      - name: Run quick release with skip build
+        run: |
+          echo "=== Running Quick Release ==="
+          echo "Using existing package file, skipping build..."
+          
+          # Make do_update.sh executable
+          chmod +x do_update.sh
+          
+          # Run with SKIP_BUILD=1 to use existing package
+          SKIP_BUILD=1 ./do_update.sh
+          
+      - name: Summary
+        if: always()
+        run: |
+          echo "=== Quick Release Summary ==="
+          echo "Finished at: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "Purpose: Test AUR release process without rebuilding"
+          
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Quick release completed successfully"
+            echo "Package has been released to GitHub and AUR updated"
+          else
+            echo "❌ Quick release failed - check logs above"
+          fi
