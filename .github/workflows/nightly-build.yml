@@ -75,7 +75,7 @@ jobs:
             git add PKGBUILD
             git commit -m "Update to Chromium ${PKGVER}-${PKGREL}
 
-Automated upstream update from nightly build workflow."
+            Automated upstream update from nightly build workflow."
             
             # Push the commit
             git push
@@ -112,7 +112,7 @@ Automated upstream update from nightly build workflow."
             git add PKGBUILD
             git commit -m "Increment pkgrel to ${PKGVER}-${PKGREL}
 
-Forced build requested via GitHub Actions workflow."
+            Forced build requested via GitHub Actions workflow."
             
             # Push the commit
             git push

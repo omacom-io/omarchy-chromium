@@ -87,8 +87,8 @@ jobs:
             git add PKGBUILD
             git commit -m "Quick release ${PKGVER}-${PKGREL}
 
-Automated quick release via GitHub Actions workflow.
-Used existing package file (SKIP_BUILD=1)."
+            Automated quick release via GitHub Actions workflow.
+            Used existing package file (SKIP_BUILD=1)."
             
             # Push the commit
             git push
