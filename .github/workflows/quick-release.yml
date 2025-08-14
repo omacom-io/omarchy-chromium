@@ -87,15 +87,22 @@ jobs:
             PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
             PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
             
-            # Commit and push using gh CLI
+            # Commit changes
             git add PKGBUILD
             git commit -m "Quick release ${PKGVER}-${PKGREL}
 
             Automated quick release via GitHub Actions workflow.
             Built from existing binaries (SKIP_BUILD=1)."
             
-            # Push using git (now authenticated via gh CLI)
-            git push origin HEAD:master
+            # Push using gh CLI API instead of git push
+            COMMIT_SHA=$(git rev-parse HEAD)
+            echo "Pushing commit $COMMIT_SHA to master branch via gh CLI..."
+            
+            # Update master branch to point to our commit using GitHub API
+            gh api repos/:owner/:repo/git/refs/heads/master \
+              --method PATCH \
+              --field sha="$COMMIT_SHA" \
+              --field force=false
             echo "✅ PKGBUILD changes committed and pushed"
           fi
           
