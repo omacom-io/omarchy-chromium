@@ -49,9 +49,9 @@ jobs:
             exit 1
           fi
           
-      - name: Build package with _skip_build=1 
+      - name: Build package with SKIP_BUILD=1 
         run: |
-          echo "=== Building Package (_skip_build=1) ==="
+          echo "=== Building Package (SKIP_BUILD=1) ==="
           echo "This will package existing built binaries without recompiling"
           
           # Increment pkgrel for this quick release
@@ -60,13 +60,10 @@ jobs:
           sed -i "s/^pkgrel=.*/pkgrel=$NEW_PKGREL/" PKGBUILD
           echo "Updated pkgrel from $CURRENT_PKGREL to $NEW_PKGREL"
           
-          # Set _skip_build=1 in PKGBUILD to skip compilation and use existing binaries
-          sed -i "s/^_skip_build=0/_skip_build=1/" PKGBUILD
-          echo "Set _skip_build=1 in PKGBUILD"
-          
-          # Run makepkg - it will now skip build and use pre-built binaries
-          echo "Running: makepkg -s --noconfirm"
-          makepkg -s --noconfirm
+          # Run makepkg with SKIP_BUILD=1 environment variable
+          # PKGBUILD now uses _skip_build=${SKIP_BUILD:-0} to check this env var
+          echo "Running: SKIP_BUILD=1 makepkg -s --noconfirm"
+          SKIP_BUILD=1 makepkg -s --noconfirm
           
           # Check that package was created
           PKGNAME=$(grep '^pkgname=' PKGBUILD | cut -d'=' -f2)
