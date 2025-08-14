@@ -250,6 +250,35 @@ Runs daily at 01:00 UTC, only builds when upstream changes are detected.
 
 ---
 
+### 🔨 Manual Full Build
+For complete rebuilds from Chromium source when needed (manual trigger only).
+
+**Workflow**: `.github/workflows/manual-build.yml`
+
+#### How to Trigger:
+**Manual Trigger Only:**
+1. Go to **Actions** tab on GitHub
+2. Select **"Manual Full Build"**
+3. Click **"Run workflow"** dropdown
+4. Select branch (usually `master`)
+5. Optionally enter reason for build
+6. Click green **"Run workflow"** button
+
+#### Features:
+- ⚠️ **Full Rebuild**: Complete 5-6 hour build from Chromium source
+- ✅ **Manual Only**: Never runs automatically (prevents accidental long builds)
+- ✅ **Custom Reason**: Add description for why you're doing manual build
+- ✅ **Complete Pipeline**: Build → GitHub release → AUR update → commit back
+- ✅ **Error Handling**: Uploads build logs on failure for debugging
+
+#### When to Use:
+- When you've modified build configuration or patches
+- For testing major changes before they go live
+- When you need a fresh rebuild for any reason
+- Emergency builds when automation isn't working
+
+---
+
 ### ⚡ Quick Release Testing
 For testing AUR releases without rebuilding (uses existing package files).
 

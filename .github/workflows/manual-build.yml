@@ -1,0 +1,100 @@
+name: Manual Full Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual build (optional)'
+        required: false
+        default: 'Manual full build requested'
+        type: string
+
+jobs:
+  manual-full-build:
+    runs-on: self-hosted
+    timeout-minutes: 720  # 12 hours timeout for the long build
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Configure git for SSH
+        run: |
+          # Configure git to use SSH instead of HTTPS
+          git remote set-url origin git@github.com:omacom-io/omarchy-chromium.git
+          
+          # Configure git user (required for commits)
+          git config --local user.email "helmut@januschka.com"
+          git config --local user.name "Helmut Januschka"
+        
+      - name: Set up environment
+        run: |
+          echo "=== Manual Full Build Environment ==="
+          echo "Started at: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Reason: ${{ inputs.reason }}"
+          echo "This will do a COMPLETE rebuild from source (5-6 hours)"
+          
+      - name: Run full build (do_update.sh without SKIP_BUILD)
+        run: |
+          echo "=== Running Full Build ==="
+          echo "Building from source (this will take 5-6 hours)..."
+          
+          # Make do_update.sh executable
+          chmod +x do_update.sh
+          
+          # Run do_update.sh WITHOUT SKIP_BUILD=1 for complete rebuild
+          ./do_update.sh
+          
+      - name: Commit PKGBUILD changes (full build)
+        run: |
+          echo "=== Committing PKGBUILD Changes (Full Build) ==="
+          
+          # Check if PKGBUILD was modified (do_update.sh increments pkgrel)
+          if git diff --quiet PKGBUILD; then
+            echo "No PKGBUILD changes to commit"
+          else
+            echo "PKGBUILD was modified, committing changes..."
+            
+            # Get version info for commit message
+            PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+            PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+            
+            git add PKGBUILD
+            git commit -m "Manual full build ${PKGVER}-${PKGREL}
+
+            ${{ inputs.reason }}
+            Complete rebuild from Chromium source."
+            
+            # Push using SSH git
+            git push origin HEAD:master
+            echo "✅ PKGBUILD changes committed and pushed"
+          fi
+          
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: manual-build-logs-${{ github.run_id }}
+          path: |
+            *.log
+            nightly_build.log
+            cron.log
+          retention-days: 7
+          
+      - name: Summary
+        if: always()
+        run: |
+          echo "=== Manual Full Build Summary ==="
+          echo "Finished at: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "Reason: ${{ inputs.reason }}"
+          
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Manual full build completed successfully"
+            echo "Complete rebuild from Chromium source finished"
+            echo "Package built, released to GitHub, and AUR updated"
+          else
+            echo "❌ Manual full build failed - check logs above"
+            echo "Build logs uploaded as artifacts for debugging"
+          fi
