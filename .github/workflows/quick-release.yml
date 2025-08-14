@@ -17,14 +17,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      - name: Configure git for SSH
+      - name: Configure git with gh CLI auth
         run: |
-          # Configure git to use SSH instead of HTTPS
-          git remote set-url origin git@github.com:omacom-io/omarchy-chromium.git
+          # Configure git to use HTTPS with gh CLI token
+          git remote set-url origin https://github.com/omacom-io/omarchy-chromium.git
           
-          # Configure git user (required for commits)
+          # Configure git user (required for commits)  
           git config --local user.email "helmut@januschka.com"
           git config --local user.name "Helmut Januschka"
+          
+          # Configure git to use gh CLI for authentication
+          gh auth setup-git
         
       - name: Set up environment
         run: |
@@ -84,14 +87,15 @@ jobs:
             PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
             PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
             
+            # Commit and push using gh CLI
             git add PKGBUILD
             git commit -m "Quick release ${PKGVER}-${PKGREL}
 
             Automated quick release via GitHub Actions workflow.
             Built from existing binaries (SKIP_BUILD=1)."
             
-            # Push the commit
-            git push
+            # Push using git (now authenticated via gh CLI)
+            git push origin HEAD:master
             echo "✅ PKGBUILD changes committed and pushed"
           fi
           
