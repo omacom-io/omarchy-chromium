@@ -38,12 +38,33 @@ if [[ "${SKIP_BUILD:-0}" == "1" ]]; then
     echo "   Package: $PKGNAME"
     echo "   Version: $FULL_VERSION"
     
-    # Find existing package file
+    # Try to find existing package file, or create it from built binaries
     PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
     if [[ ! -f "$PACKAGE_FILE" ]]; then
-        echo "Error: Package file not found: $PACKAGE_FILE"
-        echo "Please build the package first or remove SKIP_BUILD=1"
-        exit 1
+        echo "Package file not found: $PACKAGE_FILE"
+        echo "Attempting to create package from existing built binaries..."
+        
+        # Increment pkgrel first
+        echo "Incrementing pkgrel..."
+        CURRENT_PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+        NEW_PKGREL=$((CURRENT_PKGREL + 1))
+        sed -i "s/^pkgrel=.*/pkgrel=$NEW_PKGREL/" PKGBUILD
+        echo "   Updated pkgrel from $CURRENT_PKGREL to $NEW_PKGREL"
+        
+        # Update package info after incrementing pkgrel
+        PKGREL=$NEW_PKGREL
+        FULL_VERSION="${PKGVER}-${PKGREL}"
+        PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
+        
+        # Run makepkg with SKIP_BUILD=1 to package existing built binaries
+        echo "Running: SKIP_BUILD=1 makepkg -s --noconfirm"
+        SKIP_BUILD=1 makepkg -s --noconfirm
+        
+        if [[ ! -f "$PACKAGE_FILE" ]]; then
+            echo "Error: Failed to create package file: $PACKAGE_FILE"
+            exit 1
+        fi
+        echo "✅ Package created from existing built binaries"
     fi
     
     echo "   Using existing package: $PACKAGE_FILE"

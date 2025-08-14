@@ -49,44 +49,16 @@ jobs:
             exit 1
           fi
           
-      - name: Build package with SKIP_BUILD=1 
+      - name: Run do_update.sh with SKIP_BUILD=1
         run: |
-          echo "=== Building Package (SKIP_BUILD=1) ==="
-          echo "This will package existing built binaries without recompiling"
+          echo "=== Running do_update.sh with SKIP_BUILD=1 ==="
+          echo "This will increment pkgrel, build from existing binaries, and handle releases"
           
-          # Increment pkgrel for this quick release
-          CURRENT_PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
-          NEW_PKGREL=$((CURRENT_PKGREL + 1))
-          sed -i "s/^pkgrel=.*/pkgrel=$NEW_PKGREL/" PKGBUILD
-          echo "Updated pkgrel from $CURRENT_PKGREL to $NEW_PKGREL"
-          
-          # Run makepkg with SKIP_BUILD=1 environment variable
-          # PKGBUILD now uses _skip_build=${SKIP_BUILD:-0} to check this env var
-          echo "Running: SKIP_BUILD=1 makepkg -s --noconfirm"
-          SKIP_BUILD=1 makepkg -s --noconfirm
-          
-          # Check that package was created
-          PKGNAME=$(grep '^pkgname=' PKGBUILD | cut -d'=' -f2)
-          PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
-          PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
-          PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
-          
-          if [[ -f "$PACKAGE_FILE" ]]; then
-            echo "✅ Package created: $PACKAGE_FILE"
-            PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
-            echo "Package size: $PACKAGE_SIZE"
-          else
-            echo "❌ Package creation failed: $PACKAGE_FILE not found"
-            exit 1
-          fi
-          
-      - name: Create GitHub release and update AUR
-        run: |
-          echo "=== Creating Release and Updating AUR ==="
-          
-          # Now run do_update.sh with SKIP_BUILD=1 to handle GitHub release and AUR update
-          # Since we already created the package, this will use the existing package file
+          # Make do_update.sh executable
           chmod +x do_update.sh
+          
+          # Run do_update.sh with SKIP_BUILD=1
+          # This will: increment pkgrel → run SKIP_BUILD=1 makepkg → create GitHub release → update AUR
           SKIP_BUILD=1 ./do_update.sh
           
       - name: Commit PKGBUILD changes (quick release)
