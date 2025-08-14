@@ -1,7 +1,7 @@
 # 🎨 Omarchy Chromium
 
 [![AUR version](https://img.shields.io/aur/version/omarchy-chromium-bin)](https://aur.archlinux.org/packages/omarchy-chromium-bin)
-[![GitHub release](https://img.shields.io/github/v/release/hjanuschka/omarchy-chromium)](https://github.com/hjanuschka/omarchy-chromium/releases)
+[![GitHub release](https://img.shields.io/github/v/release/omacom-io/omarchy-chromium)](https://github.com/omacom-io/omarchy-chromium/releases)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue)](LICENSE)
 
 A custom build of Chromium with the **Omarchy theme patches** - providing command-line theme switching capabilities for seamless integration with your desktop environment.
@@ -33,14 +33,14 @@ makepkg -si
 ```
 
 ### Option 2: Download Pre-built Binary
-Download the latest `.pkg.tar.zst` from [Releases](https://github.com/hjanuschka/omarchy-chromium/releases) and install:
+Download the latest `.pkg.tar.zst` from [Releases](https://github.com/omacom-io/omarchy-chromium/releases) and install:
 ```bash
 sudo pacman -U omarchy-chromium-*.pkg.tar.zst
 ```
 
 ### Option 3: Build from Source
 ```bash
-git clone https://github.com/hjanuschka/omarchy-chromium.git
+git clone https://github.com/omacom-io/omarchy-chromium.git
 cd omarchy-chromium
 makepkg -si
 ```
@@ -278,7 +278,7 @@ This project is licensed under the BSD-3-Clause License - same as Chromium.
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/hjanuschka/omarchy-chromium/issues)
+- **Issues**: [GitHub Issues](https://github.com/omacom-io/omarchy-chromium/issues)
 - **AUR Comments**: [AUR Package Page](https://aur.archlinux.org/packages/omarchy-chromium-bin)
 - **Maintainer**: Helmut Januschka <helmut@januschka.com>
 

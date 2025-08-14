@@ -4,7 +4,7 @@ set -euo pipefail
 # Configuration
 CURRENT_DIR="$(pwd)"
 AUR_DIR="$HOME/BUILD_LAB/omarchy-chromium-bin"
-GITHUB_REPO="hjanuschka/omarchy-chromium"
+GITHUB_REPO="omacom-io/omarchy-chromium"
 
 echo "=== Omarchy Chromium Automated Update & Release Script ==="
 
