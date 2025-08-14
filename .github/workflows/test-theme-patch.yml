@@ -1,0 +1,245 @@
+name: Test Theme Patch
+
+on:
+  workflow_dispatch:
+    inputs:
+      patch_file:
+        description: 'Theme patch file to test (default: omarchy-theme-switcher.patch)'
+        required: false
+        default: 'omarchy-theme-switcher.patch'
+        type: string
+      reason:
+        description: 'Reason for patch test (optional)'
+        required: false
+        default: 'Testing theme patch functionality'
+        type: string
+
+jobs:
+  test-theme-patch:
+    runs-on: self-hosted
+    timeout-minutes: 720  # 12 hours timeout for the long build
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Configure git for SSH
+        run: |
+          # Configure git to use SSH instead of HTTPS
+          git remote set-url origin git@github.com:omacom-io/omarchy-chromium.git
+          
+          # Configure git user (required for commits)
+          git config --local user.email "helmut@januschka.com"
+          git config --local user.name "Helmut Januschka"
+        
+      - name: Set up environment
+        run: |
+          echo "=== Theme Patch Test Environment ==="
+          echo "Started at: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Patch file: ${{ inputs.patch_file }}"
+          echo "Reason: ${{ inputs.reason }}"
+          echo "This will test theme patch with fresh Chromium source"
+          
+      - name: Prepare Chromium source for patch testing
+        run: |
+          echo "=== Preparing Chromium Source ==="
+          
+          CHROMIUM_SRC_DIR="$HOME/omarchy-chromium-src/src"
+          
+          if [[ ! -d "$CHROMIUM_SRC_DIR" ]]; then
+            echo "❌ Chromium source directory not found at $CHROMIUM_SRC_DIR"
+            echo "Please run a full build first to create the initial checkout"
+            exit 1
+          fi
+          
+          # Get version from PKGBUILD
+          PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+          echo "Target Chromium version: $PKGVER"
+          
+          # Navigate to Chromium source
+          cd "$CHROMIUM_SRC_DIR"
+          
+          # Setup depot_tools if not already in PATH
+          if ! command -v git &> /dev/null; then
+            echo "❌ git not found in PATH"
+            exit 1
+          fi
+          
+          if ! command -v gclient &> /dev/null; then
+            if [[ -d "$HOME/depot_tools" ]]; then
+              export PATH="$HOME/depot_tools:$PATH"
+            else
+              echo "❌ depot_tools not found. Please install depot_tools first."
+              exit 1
+            fi
+          fi
+          
+          echo "=== Stashing Current State ==="
+          # Stash any current changes to preserve them
+          git stash push -m "Auto-stash before theme patch test at $(date)" || echo "Nothing to stash"
+          
+          echo "=== Checking out PKGBUILD version ==="
+          # Fetch and checkout the exact version from PKGBUILD
+          git fetch --tags --depth=1 origin refs/tags/$PKGVER:refs/tags/$PKGVER 2>/dev/null || {
+            echo "Tag $PKGVER not found, trying full fetch..."
+            git fetch --tags
+          }
+          
+          # Checkout the specific version
+          git checkout "$PKGVER"
+          echo "✅ Checked out Chromium $PKGVER"
+          
+          # Clean any existing build to ensure fresh start
+          echo "=== Cleaning previous build ==="
+          rm -rf out/Release
+          echo "✅ Build directory cleaned"
+          
+      - name: Apply theme patch
+        run: |
+          echo "=== Applying Theme Patch ==="
+          
+          CHROMIUM_SRC_DIR="$HOME/omarchy-chromium-src/src"
+          PATCH_FILE="${{ inputs.patch_file }}"
+          
+          cd "$CHROMIUM_SRC_DIR"
+          
+          # Check if patch file exists
+          if [[ ! -f "${{ github.workspace }}/$PATCH_FILE" ]]; then
+            echo "❌ Patch file not found: $PATCH_FILE"
+            echo "Available patch files:"
+            ls -la "${{ github.workspace }}"/*.patch || echo "No .patch files found"
+            exit 1
+          fi
+          
+          echo "Applying patch: $PATCH_FILE"
+          
+          # Apply the theme patch
+          if patch -Np1 -i "${{ github.workspace }}/$PATCH_FILE" --dry-run &>/dev/null; then
+            patch -Np1 -i "${{ github.workspace }}/$PATCH_FILE"
+            echo "✅ Theme patch applied successfully"
+          else
+            echo "❌ Theme patch failed to apply"
+            echo "Checking what might be wrong..."
+            patch -Np1 -i "${{ github.workspace }}/$PATCH_FILE" --dry-run || true
+            exit 1
+          fi
+          
+          # Show what files were modified by the patch
+          echo "=== Files modified by patch ==="
+          git status --porcelain || true
+          git diff --name-only || true
+          
+      - name: Generate build configuration
+        run: |
+          echo "=== Generating Build Configuration ==="
+          
+          CHROMIUM_SRC_DIR="$HOME/omarchy-chromium-src/src"
+          cd "$CHROMIUM_SRC_DIR"
+          
+          # Create build directory
+          mkdir -p out/Release
+          
+          # Copy over the args.gn file from PKGBUILD directory
+          if [[ -f "${{ github.workspace }}/chromium.args.gn" ]]; then
+            cp "${{ github.workspace }}/chromium.args.gn" out/Release/args.gn
+            echo "✅ Build args copied"
+          else
+            echo "❌ chromium.args.gn not found in package directory"
+            exit 1
+          fi
+          
+          # Generate build files
+          gn gen out/Release
+          echo "✅ Build configuration generated"
+          
+      - name: Run test build
+        run: |
+          echo "=== Running Test Build ==="
+          echo "Building Chromium with theme patch (this will take 5-6 hours)..."
+          
+          # Make do_update.sh executable
+          chmod +x do_update.sh
+          
+          # Run do_update.sh without SKIP_BUILD for complete build
+          # This will build from the patched source
+          ./do_update.sh
+          
+      - name: Commit PKGBUILD changes (theme patch test)
+        run: |
+          echo "=== Committing PKGBUILD Changes (Theme Patch Test) ==="
+          
+          # Check if PKGBUILD was modified (do_update.sh increments pkgrel)
+          if git diff --quiet PKGBUILD; then
+            echo "No PKGBUILD changes to commit"
+          else
+            echo "PKGBUILD was modified, committing changes..."
+            
+            # Get version info for commit message
+            PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+            PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+            
+            git add PKGBUILD
+            git commit -m "Theme patch test build ${PKGVER}-${PKGREL}
+
+            ${{ inputs.reason }}
+            Tested patch: ${{ inputs.patch_file }}
+            Built from clean Chromium $PKGVER source with theme patch."
+            
+            # Push using SSH git
+            git push origin HEAD:master
+            echo "✅ PKGBUILD changes committed and pushed"
+          fi
+          
+      - name: Restore Chromium source state
+        if: always()
+        run: |
+          echo "=== Restoring Chromium Source State ==="
+          
+          CHROMIUM_SRC_DIR="$HOME/omarchy-chromium-src/src"
+          cd "$CHROMIUM_SRC_DIR"
+          
+          # Go back to master/main branch
+          git checkout master 2>/dev/null || git checkout main 2>/dev/null || echo "Could not checkout master/main"
+          
+          # Restore any stashed changes
+          if git stash list | grep -q "Auto-stash before theme patch test"; then
+            echo "Restoring previously stashed changes..."
+            git stash pop
+            echo "✅ Stashed changes restored"
+          else
+            echo "No matching stash found to restore"
+          fi
+          
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: theme-patch-test-logs-${{ github.run_id }}
+          path: |
+            *.log
+            nightly_build.log
+            cron.log
+          retention-days: 7
+          
+      - name: Summary
+        if: always()
+        run: |
+          echo "=== Theme Patch Test Summary ==="
+          echo "Finished at: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "Patch tested: ${{ inputs.patch_file }}"
+          echo "Reason: ${{ inputs.reason }}"
+          
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Theme patch test completed successfully"
+            echo "Patch applied cleanly and build succeeded"
+            echo "Package built, released to GitHub, and AUR updated"
+          else
+            echo "❌ Theme patch test failed"
+            echo "Check logs above for patch application or build errors"
+            echo "Build logs uploaded as artifacts for debugging"
+          fi
+          
+          echo ""
+          echo "Chromium source has been restored to previous state"

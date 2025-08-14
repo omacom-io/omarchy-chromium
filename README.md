@@ -279,6 +279,43 @@ For complete rebuilds from Chromium source when needed (manual trigger only).
 
 ---
 
+### 🎨 Test Theme Patch
+For testing theme patches with clean Chromium source (manual trigger only).
+
+**Workflow**: `.github/workflows/test-theme-patch.yml`
+
+#### How to Trigger:
+**Manual Trigger Only:**
+1. Go to **Actions** tab on GitHub
+2. Select **"Test Theme Patch"**
+3. Click **"Run workflow"** dropdown
+4. Select branch (usually `master`)
+5. Optionally specify patch file (defaults to `omarchy-theme-switcher.patch`)
+6. Optionally enter reason for test
+7. Click green **"Run workflow"** button
+
+#### What It Does:
+1. **Stashes current state** - Preserves any work in Chromium source
+2. **Checks out PKGBUILD version** - Uses exact version from your PKGBUILD
+3. **Applies theme patch** - Tests patch against clean source
+4. **Full build** - Complete 5-6 hour build with patch applied
+5. **Restores state** - Returns Chromium source to previous state
+
+#### Features:
+- 🎯 **Isolated testing** - Clean environment for patch validation
+- 🔄 **State preservation** - Automatically stashes and restores your work
+- 🎨 **Theme focus** - Designed specifically for theme patch testing
+- ✅ **Complete pipeline** - Build → GitHub release → AUR update → commit back
+- 🛡️ **Safe restoration** - Always restores Chromium source afterward
+
+#### When to Use:
+- Testing new theme patch versions
+- Validating patch compatibility with specific Chromium versions
+- Debugging theme patch issues
+- Before merging theme patch changes
+
+---
+
 ### ⚡ Quick Release Testing
 For testing AUR releases without rebuilding (uses existing package files).
 
