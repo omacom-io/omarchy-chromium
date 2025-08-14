@@ -17,6 +17,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
+      - name: Configure git for SSH
+        run: |
+          # Configure git to use SSH instead of HTTPS
+          git remote set-url origin git@github.com:omacom-io/omarchy-chromium.git
+          
+          # Configure git user (required for commits)
+          git config --local user.email "helmut@januschka.com"
+          git config --local user.name "Helmut Januschka"
+        
       - name: Set up environment
         run: |
           echo "=== Quick Release Environment ==="
@@ -64,10 +73,6 @@ jobs:
       - name: Commit PKGBUILD changes (quick release)
         run: |
           echo "=== Committing PKGBUILD Changes (Quick Release) ==="
-          
-          # Configure git for the action
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
           
           # Check if PKGBUILD was modified (do_update.sh increments pkgrel)
           if git diff --quiet PKGBUILD; then

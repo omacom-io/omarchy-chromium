@@ -21,6 +21,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
+      - name: Configure git for SSH
+        run: |
+          # Configure git to use SSH instead of HTTPS
+          git remote set-url origin git@github.com:omacom-io/omarchy-chromium.git
+          
+          # Configure git user (required for commits)
+          git config --local user.email "helmut@januschka.com"
+          git config --local user.name "Helmut Januschka"
+        
       - name: Set up environment
         run: |
           echo "=== Environment Setup ==="
@@ -58,10 +67,6 @@ jobs:
         run: |
           echo "=== Committing PKGBUILD Changes ==="
           
-          # Configure git for the action
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          
           # Check if PKGBUILD was modified
           if git diff --quiet PKGBUILD; then
             echo "No PKGBUILD changes to commit"
@@ -94,10 +99,6 @@ jobs:
         if: steps.upstream_check.outputs.upstream_changed == 'false' && inputs.force_build == true
         run: |
           echo "=== Committing PKGBUILD Changes (Forced Build) ==="
-          
-          # Configure git for the action
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
           
           # Check if PKGBUILD was modified
           if git diff --quiet PKGBUILD; then
