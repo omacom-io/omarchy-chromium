@@ -70,19 +70,44 @@ The project consists of three main components:
 
 ## 🔧 Development
 
-### Prerequisites
+### Building a Builder Machine
+
+#### Required Packages
+
+Install all necessary packages for building Chromium:
 
 ```bash
-# Install build dependencies
-sudo pacman -S base-devel git python gn ninja nodejs java-runtime-headless
+# Core build tools
+sudo pacman -S base-devel git python
 
-# Install depot_tools
-git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git ~/depot_tools
-export PATH="$HOME/depot_tools:$PATH"
+# Chromium build requirements
+sudo pacman -S clang lld rust rust-bindgen gn ninja nodejs npm java-runtime-headless
 
-# Install GitHub CLI for releases
+# Libraries and dependencies
+sudo pacman -S gtk3 nss alsa-lib libxss libcups libgcrypt ttf-liberation
+sudo pacman -S systemd dbus libpulse pciutils libva libffi
+sudo pacman -S desktop-file-utils hicolor-icon-theme pipewire qt6-base
+
+# For releases
 sudo pacman -S github-cli
-gh auth login
+```
+
+**Minimal package versions tested:**
+- clang 20.1.8+
+- rust 1.89.0+
+- nodejs 24.5.0+
+- python 3.13+
+- gn 0.2238+
+
+#### depot_tools Setup
+
+```bash
+# Install depot_tools (Google's Chromium tools)
+git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git ~/depot_tools
+
+# Add to your shell profile (~/.bashrc or ~/.zshrc)
+echo 'export PATH="$HOME/depot_tools:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ### Initial Setup
@@ -98,9 +123,25 @@ gh auth login
    makepkg -s  # This will create ~/omarchy-chromium-src automatically
    ```
 
-3. **Clone AUR package repository:**
+3. **Setup AUR package repository:**
    ```bash
+   # Create the directory structure
+   mkdir -p ~/BUILD_LAB
+   
+   # Option A: If you're the maintainer (have AUR access)
    git clone ssh://aur@aur.archlinux.org/omarchy-chromium-bin.git ~/BUILD_LAB/omarchy-chromium-bin
+   
+   # Option B: For local testing only (no AUR push access)
+   mkdir ~/BUILD_LAB/omarchy-chromium-bin
+   cd ~/BUILD_LAB/omarchy-chromium-bin
+   git init
+   touch PKGBUILD .SRCINFO
+   ```
+
+4. **Configure GitHub CLI (for releases):**
+   ```bash
+   gh auth login
+   # Follow prompts to authenticate with GitHub
    ```
 
 ## 📜 Automation Scripts
