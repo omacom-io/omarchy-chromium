@@ -218,6 +218,54 @@ cd ~/omarchy-chromium
 ./check_upstream.sh  # Shows if Arch has newer version
 ```
 
+## 🌙 Nightly Builds
+
+Automate daily builds that only run when upstream changes are detected:
+
+### Setup
+```bash
+# Install zellij (for persistent sessions)
+sudo pacman -S zellij
+
+# Set up the cron job (runs at 01:00 daily)
+cd ~/omarchy-chromium
+./setup_cron.sh
+```
+
+### How it works
+- Runs `smart_update.sh` at 01:00 AM daily
+- Only builds if Arch has released a new Chromium version
+- Creates a `zellij` session named `omarchy-nightly`
+- Build takes 5-6 hours, session persists for manual intervention
+
+### Monitor & Manage
+```bash
+# Attach to running build session
+zellij attach omarchy-nightly
+
+# Check if nightly build is running
+zellij list-sessions | grep omarchy-nightly
+
+# View logs
+tail -f ~/omarchy-chromium/nightly_build.log  # Session creation logs
+tail -f ~/omarchy-chromium/cron.log           # Cron execution logs
+
+# Kill stuck session
+zellij kill-session omarchy-nightly
+
+# Test the nightly build manually
+./nightly_build.sh
+
+# Remove the cron job
+crontab -l | grep -v nightly_build.sh | crontab -
+```
+
+### Important Notes
+- If the build fails, the session stays open for debugging
+- You can attach to the session anytime to check progress
+- The session auto-closes after successful builds
+- Only one `omarchy-nightly` session can exist at a time
+
 ## 🛠️ Build Configuration
 
 The build uses Google's bundled toolchain for maximum compatibility:
