@@ -230,62 +230,6 @@ cd ~/omarchy-chromium-src/src
 valgrind --tool=memcheck --leak-check=full out/Debug/chrome --no-startup-window --set-default-theme --headless --disable-gpu --no-sandbox
 ```
 
-## 📊 Performance Testing
-
-### Build Performance
-
-```bash
-cd ~/omarchy-chromium-src/src
-
-# Time the build process
-time autoninja -C out/Release chrome
-
-# Monitor resource usage during build
-htop &  # In another terminal
-autoninja -C out/Release chrome
-```
-
-### Theme Switch Performance
-
-```bash
-# Test theme switch speed
-time (out/Release/chrome --no-startup-window --set-color-scheme="dark" & sleep 1; killall chrome)
-time (out/Release/chrome --no-startup-window --set-color-scheme="light" & sleep 1; killall chrome)
-```
-
-## 🔍 Continuous Testing
-
-### Pre-Commit Testing
-
-```bash
-# Before committing patches, run:
-cd ~/omarchy-chromium-src/src
-
-# 1. Unit tests
-tools/autotest.py -C out/Release --gtest_repeat=1 chrome/browser/themes/theme_command_line_handler_unittest.cc
-
-# 2. Build test
-autoninja -C out/Release chrome
-
-# 3. Manual smoke test
-out/Release/chrome --no-startup-window --set-default-theme
-```
-
-### Post-Build Testing
-
-```bash
-# After successful build:
-cd ~/omarchy-chromium
-
-# 1. Package integrity
-namcap omarchy-chromium-*.pkg.tar.zst
-
-# 2. Installation test
-sudo pacman -U omarchy-chromium-*.pkg.tar.zst
-
-# 3. Functionality test
-chromium --no-startup-window --set-color-scheme="dark"
-```
 
 ## 📋 Test Checklist
 
