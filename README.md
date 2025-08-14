@@ -218,53 +218,106 @@ cd ~/omarchy-chromium
 ./check_upstream.sh  # Shows if Arch has newer version
 ```
 
-## 🌙 Nightly Builds
+## 🤖 GitHub Actions Automation
 
-Automate daily builds that only run when upstream changes are detected:
+**Automated builds using self-hosted GitHub runner (recommended approach):**
 
-### Setup
+### 🌙 Nightly Builds
+Runs daily at 01:00 UTC, only builds when upstream changes are detected.
+
+**Workflow**: `.github/workflows/nightly-build.yml`
+
+#### Features:
+- ✅ **Daily Schedule**: Runs at 01:00 UTC automatically
+- ✅ **Smart Detection**: Only builds when Arch has new Chromium version
+- ✅ **Manual Trigger**: Can be run manually from GitHub Actions tab
+- ✅ **Force Build**: Option to build even without upstream changes
+- ✅ **12-hour Timeout**: Handles long build times gracefully
+- ✅ **Error Handling**: Uploads logs on failure for debugging
+
+#### How to Trigger:
+**Automatic (Recommended):**
+- Runs automatically every day at 01:00 UTC
+- Only builds if upstream changes detected
+
+**Manual:**
+1. Go to **Actions** tab on GitHub
+2. Select **"Nightly Upstream Check & Build"**  
+3. Click **"Run workflow"** dropdown
+4. Select branch (usually `master`)
+5. Check "Force build" if you want to build without upstream changes
+6. Click green **"Run workflow"** button
+
+---
+
+### ⚡ Quick Release Testing
+For testing AUR releases without rebuilding (uses existing package files).
+
+**Workflow**: `.github/workflows/quick-release.yml`
+
+#### How to Trigger:
+**Branch Pattern (Recommended for testing):**
 ```bash
-# Install zellij (for persistent sessions)
-sudo pacman -S zellij
-
-# Set up the cron job (runs at 01:00 daily)
-cd ~/omarchy-chromium
-./setup_cron.sh
+# Create and push a release test branch
+git checkout -b release-test/test-aur-upload
+git push origin release-test/test-aur-upload
+# → Automatically triggers quick release workflow
 ```
 
-### How it works
-- Runs `smart_update.sh` at 01:00 AM daily
-- Only builds if Arch has released a new Chromium version
-- Creates a `zellij` session named `omarchy-nightly`
-- Build takes 5-6 hours, session persists for manual intervention
-
-### Monitor & Manage
+**Tag Pattern:**
 ```bash
-# Attach to running build session
-zellij attach omarchy-nightly
-
-# Check if nightly build is running
-zellij list-sessions | grep omarchy-nightly
-
-# View logs
-tail -f ~/omarchy-chromium/nightly_build.log  # Session creation logs
-tail -f ~/omarchy-chromium/cron.log           # Cron execution logs
-
-# Kill stuck session
-zellij kill-session omarchy-nightly
-
-# Test the nightly build manually
-./nightly_build.sh
-
-# Remove the cron job
-crontab -l | grep -v nightly_build.sh | crontab -
+# Create and push a quick release tag  
+git tag quick-release-v1
+git push origin quick-release-v1
+# → Automatically triggers quick release workflow
 ```
 
-### Important Notes
-- If the build fails, the session stays open for debugging
-- You can attach to the session anytime to check progress
-- The session auto-closes after successful builds
-- Only one `omarchy-nightly` session can exist at a time
+**Manual Trigger:**
+1. Go to **Actions** tab on GitHub
+2. Select **"Quick Release (Skip Build)"**
+3. Click **"Run workflow"** dropdown
+4. Select branch (usually `master`)
+5. Choose whether to increment pkgrel
+6. Click green **"Run workflow"** button
+
+#### Features:
+- ✅ **Skip Build**: Uses `SKIP_BUILD=1` with existing package
+- ✅ **Fast**: Completes in ~5 minutes vs 5-6 hours
+- ✅ **Testing**: Perfect for testing AUR release process
+- ✅ **Safe**: Uses existing built packages
+- ✅ **Flexible**: Branch pattern or tag pattern triggers
+
+---
+
+### 🔍 Monitor Workflows
+
+#### View Workflow Status:
+1. Go to **Actions** tab on GitHub: `https://github.com/omacom-io/omarchy-chromium/actions`
+2. See all workflow runs (running, completed, failed)
+3. Click on any run to see detailed logs
+
+#### Real-time Monitoring:
+1. Click on a **running workflow** 
+2. Click on the **job name** (e.g., "check-and-build")
+3. Click on individual **steps** to see live logs
+4. **Auto-refreshes** - no need to manually reload
+
+#### Check Self-Hosted Runner:
+1. Go to **Repository Settings**
+2. Select **Actions** → **Runners**
+3. Verify runner is **online** and **idle/active**
+
+#### Troubleshooting:
+```bash
+# Check runner status on your machine
+systemctl --user status actions.runner.omacom-io-omarchy-chromium.*
+
+# Restart runner if needed  
+systemctl --user restart actions.runner.omacom-io-omarchy-chromium.*
+
+# View runner logs
+journalctl --user -u actions.runner.omacom-io-omarchy-chromium.* -f
+```
 
 ## 🛠️ Build Configuration
 
