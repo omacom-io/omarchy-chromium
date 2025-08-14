@@ -17,12 +17,19 @@ A custom build of Chromium with the **Omarchy theme patches** - providing comman
 ## 📥 Installation
 
 ### Option 1: Install from AUR (Recommended)
-```bash
-# Using yay
-yay -S omarchy-chromium-bin
 
-# Using paru
+The package is available in the AUR: https://aur.archlinux.org/packages/omarchy-chromium-bin
+
+```bash
+# Using an AUR helper (if you have one installed)
+yay -S omarchy-chromium-bin
+# OR
 paru -S omarchy-chromium-bin
+
+# Manual installation (without AUR helper)
+git clone https://aur.archlinux.org/omarchy-chromium-bin.git
+cd omarchy-chromium-bin
+makepkg -si
 ```
 
 ### Option 2: Download Pre-built Binary
