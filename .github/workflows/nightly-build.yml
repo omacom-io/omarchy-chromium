@@ -21,17 +21,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      - name: Configure git with gh CLI auth
+      - name: Configure git for SSH
         run: |
-          # Configure git to use HTTPS with gh CLI token
-          git remote set-url origin https://github.com/omacom-io/omarchy-chromium.git
+          # Configure git to use SSH instead of HTTPS
+          git remote set-url origin git@github.com:omacom-io/omarchy-chromium.git
           
           # Configure git user (required for commits)
           git config --local user.email "helmut@januschka.com"
           git config --local user.name "Helmut Januschka"
-          
-          # Configure git to use gh CLI for authentication
-          gh auth setup-git
         
       - name: Set up environment
         run: |
@@ -85,15 +82,8 @@ jobs:
 
             Automated upstream update from nightly build workflow."
             
-            # Push using gh CLI API instead of git push
-            COMMIT_SHA=$(git rev-parse HEAD)
-            echo "Pushing commit $COMMIT_SHA to master branch via gh CLI..."
-            
-            # Update master branch to point to our commit using GitHub API
-            gh api repos/:owner/:repo/git/refs/heads/master \
-              --method PATCH \
-              --field sha="$COMMIT_SHA" \
-              --field force=false
+            # Push using SSH git
+            git push origin HEAD:master
             echo "✅ PKGBUILD changes committed and pushed"
           fi
           
@@ -125,15 +115,8 @@ jobs:
 
             Forced build requested via GitHub Actions workflow."
             
-            # Push using gh CLI API instead of git push
-            COMMIT_SHA=$(git rev-parse HEAD)
-            echo "Pushing commit $COMMIT_SHA to master branch via gh CLI..."
-            
-            # Update master branch to point to our commit using GitHub API
-            gh api repos/:owner/:repo/git/refs/heads/master \
-              --method PATCH \
-              --field sha="$COMMIT_SHA" \
-              --field force=false
+            # Push using SSH git
+            git push origin HEAD:master
             echo "✅ PKGBUILD changes committed and pushed"
           fi
           
