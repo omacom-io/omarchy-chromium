@@ -130,6 +130,7 @@ solutions = [
     "custom_deps": {},
     "custom_vars": {
       "checkout_pgo_profiles": True,
+      "rbe_instance": "projects/rbe-chromium-untrusted/instances/default_instance",
     },
   },
 ]
@@ -187,6 +188,7 @@ solutions = [
     "custom_deps": {},
     "custom_vars": {
       "checkout_pgo_profiles": True,
+      "rbe_instance": "projects/rbe-chromium-untrusted/instances/default_instance",
     },
   },
 ]
@@ -267,7 +269,7 @@ EOF
     done
     
     # Create symlink for compatibility with rest of PKGBUILD
-    ln -sf "$_chromium_upstream_src/src" "$srcdir/chromium-$pkgver"
+    # ln -sf "$_chromium_upstream_src/src" "$srcdir/chromium-$pkgver"
     return 0
   fi
 

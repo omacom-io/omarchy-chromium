@@ -47,23 +47,27 @@ makepkg -si
 
 ## 🎨 Theme Usage
 
-Change Chromium's theme without opening a new window:
+**GM3-compliant theme switches** - change themes without opening new windows:
 
 ```bash
-# Switch to dark theme
-chromium --no-startup-window --set-color-scheme=dark
+# Set custom user color (RGB values)
+chromium --no-startup-window --set-user-color="28,32,39"
 
-# Switch to light theme
-chromium --no-startup-window --set-color-scheme=light
+# Switch color scheme
+chromium --no-startup-window --set-color-scheme="dark"
+chromium --no-startup-window --set-color-scheme="light"
 
-# Set custom theme color (RGB values)
-chromium --no-startup-window --set-theme-color=255,100,0
+# Set color variant
+chromium --no-startup-window --set-color-variant="vibrant"
+
+# Enable grayscale theme
+chromium --no-startup-window --set-grayscale-theme="true"
 
 # Reset to default theme
 chromium --no-startup-window --set-default-theme
 ```
 
-> **Note**: The `--no-startup-window` flag allows theme changes to apply to existing windows without opening a new one.
+> **Note**: These are Material Design 3 (GM3) compliant switches. The `--no-startup-window` flag applies changes to existing windows without opening a new one.
 
 ## 🏗️ Project Structure
 
