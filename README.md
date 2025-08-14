@@ -40,17 +40,23 @@ makepkg -si
 
 ## 🎨 Theme Usage
 
-Launch Chromium with custom theme colors:
+Change Chromium's theme without opening a new window:
+
 ```bash
-# Dark theme
-chromium --theme-color="#1e1e2e" --theme-scheme="dark"
+# Switch to dark theme
+chromium --no-startup-window --set-color-scheme=dark
 
-# Light theme with custom color
-chromium --theme-color="#ffffff" --theme-scheme="light"
+# Switch to light theme
+chromium --no-startup-window --set-color-scheme=light
 
-# System theme (follows GTK/Qt)
-chromium --theme-scheme="system"
+# Set custom theme color (RGB values)
+chromium --no-startup-window --set-theme-color=255,100,0
+
+# Reset to default theme
+chromium --no-startup-window --set-default-theme
 ```
+
+> **Note**: The `--no-startup-window` flag allows theme changes to apply to existing windows without opening a new one.
 
 ## 🏗️ Project Structure
 
