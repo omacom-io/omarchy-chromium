@@ -223,27 +223,35 @@ The core `omarchy-theme-switcher.patch` is based on an upstream Chromium change 
 
 > **Note**: Keeping the CL mergeable with Chromium main branch is crucial for maintaining this project. If you encounter merge conflicts, please help by updating the CL!
 
-## 🐛 Troubleshooting
 
-### Build Fails with Missing Headers
+## 🧪 Testing
+
+### Running Theme Service Tests
+
+After applying the theme switcher patch, verify it works correctly:
+
 ```bash
-# Ensure partition_alloc symlink exists
 cd ~/omarchy-chromium-src/src
-ln -sf base/allocator/partition_allocator/src/partition_alloc partition_alloc
+
+# Build test target if not already built
+autoninja -C out/Release chrome/browser/themes:unit_tests
+
+# Run theme service unit tests
+tools/autotest.py -C out/Release --gtest_repeat=1 chrome/browser/themes/theme_service_unittest.cc
+
+# For debug build (if you have one)
+tools/autotest.py -C out/Default --gtest_repeat=1 chrome/browser/themes/theme_service_unittest.cc
 ```
 
-### PGO Profile Missing
-```bash
-# Update .gclient and sync
-cd ~/omarchy-chromium-src
-gclient sync --force --reset --with_branch_heads --with_tags
+Expected output:
 ```
-
-### Out of Memory During Build
-```bash
-# Limit parallel jobs
-export NINJA_JOBS=4
-makepkg -s
+[==========] Running tests from theme_service_unittest.cc
+[----------] ThemeServiceTest
+[ RUN      ] ThemeServiceTest.CommandLineThemeColor
+[       OK ] ThemeServiceTest.CommandLineThemeColor (15 ms)
+[ RUN      ] ThemeServiceTest.CommandLineThemeScheme
+[       OK ] ThemeServiceTest.CommandLineThemeScheme (12 ms)
+[==========] All tests passed
 ```
 
 ## 🤝 Contributing
@@ -252,7 +260,7 @@ Contributions are welcome! Please:
 
 1. Fork the repository
 2. Create a feature branch
-3. Test your changes thoroughly
+3. Test your changes thoroughly (including unit tests above)
 4. Submit a pull request
 
 ### Testing Patches
@@ -262,6 +270,8 @@ cd ~/omarchy-chromium-src/src
 patch -p1 < ~/your-patch.patch
 # Test build
 autoninja -C out/Release chrome
+# Run theme tests
+tools/autotest.py -C out/Release --gtest_repeat=1 chrome/browser/themes/theme_service_unittest.cc
 ```
 
 ## 📝 License
