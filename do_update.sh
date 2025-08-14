@@ -25,38 +25,64 @@ if [[ ! -d "$AUR_DIR" ]]; then
     exit 1
 fi
 
-# Step 1: Increment pkgrel
-echo "1. Incrementing pkgrel..."
-CURRENT_PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
-NEW_PKGREL=$((CURRENT_PKGREL + 1))
-sed -i "s/^pkgrel=.*/pkgrel=$NEW_PKGREL/" PKGBUILD
-echo "   Updated pkgrel from $CURRENT_PKGREL to $NEW_PKGREL"
-
-# Get package info
-PKGNAME=$(grep '^pkgname=' PKGBUILD | cut -d'=' -f2)
-PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
-PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
-FULL_VERSION="${PKGVER}-${PKGREL}"
-
-echo "   Package: $PKGNAME"
-echo "   Version: $FULL_VERSION"
-
-# Step 2: Build package
-echo "2. Building package..."
-makepkg -s --noconfirm
-
-# Find the built package
-PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
-if [[ ! -f "$PACKAGE_FILE" ]]; then
-    echo "Error: Built package not found: $PACKAGE_FILE"
-    exit 1
+# Check if we should skip build
+if [[ "${SKIP_BUILD:-0}" == "1" ]]; then
+    echo "SKIP_BUILD=1 detected, skipping build steps..."
+    
+    # Get package info from existing PKGBUILD
+    PKGNAME=$(grep '^pkgname=' PKGBUILD | cut -d'=' -f2)
+    PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+    PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+    FULL_VERSION="${PKGVER}-${PKGREL}"
+    
+    echo "   Package: $PKGNAME"
+    echo "   Version: $FULL_VERSION"
+    
+    # Find existing package file
+    PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
+    if [[ ! -f "$PACKAGE_FILE" ]]; then
+        echo "Error: Package file not found: $PACKAGE_FILE"
+        echo "Please build the package first or remove SKIP_BUILD=1"
+        exit 1
+    fi
+    
+    echo "   Using existing package: $PACKAGE_FILE"
+    PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
+    echo "   Size: $PACKAGE_SIZE"
+else
+    # Step 1: Increment pkgrel
+    echo "1. Incrementing pkgrel..."
+    CURRENT_PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+    NEW_PKGREL=$((CURRENT_PKGREL + 1))
+    sed -i "s/^pkgrel=.*/pkgrel=$NEW_PKGREL/" PKGBUILD
+    echo "   Updated pkgrel from $CURRENT_PKGREL to $NEW_PKGREL"
+    
+    # Get package info
+    PKGNAME=$(grep '^pkgname=' PKGBUILD | cut -d'=' -f2)
+    PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+    PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+    FULL_VERSION="${PKGVER}-${PKGREL}"
+    
+    echo "   Package: $PKGNAME"
+    echo "   Version: $FULL_VERSION"
+    
+    # Step 2: Build package
+    echo "2. Building package..."
+    makepkg -s --noconfirm
+    
+    # Find the built package
+    PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
+    if [[ ! -f "$PACKAGE_FILE" ]]; then
+        echo "Error: Built package not found: $PACKAGE_FILE"
+        exit 1
+    fi
+    
+    echo "   Built: $PACKAGE_FILE"
+    PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
+    echo "   Size: $PACKAGE_SIZE"
 fi
 
-echo "   Built: $PACKAGE_FILE"
-PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
-echo "   Size: $PACKAGE_SIZE"
-
-# Step 3: Create GitHub release
+# Step 3: Create GitHub release (always runs)
 echo "3. Creating GitHub release..."
 RELEASE_TAG="v${FULL_VERSION}"
 RELEASE_TITLE="Omarchy Chromium ${FULL_VERSION}"
@@ -95,7 +121,7 @@ gh release create "$RELEASE_TAG" \
 
 echo "   ✓ Release created: https://github.com/${GITHUB_REPO}/releases/tag/${RELEASE_TAG}"
 
-# Step 4: Update AUR package
+# Step 4: Update AUR package (always runs)
 echo "4. Updating AUR package..."
 cd "$AUR_DIR"
 

@@ -198,6 +198,31 @@ The build uses Google's bundled toolchain for maximum compatibility:
 - **Build Time**: 3-4 hours on modern hardware
 - **Network**: Fast connection for initial checkout (~30GB)
 
+## 🔧 Patch Maintenance
+
+### Theme Switcher Patch (IMPORTANT)
+
+The core `omarchy-theme-switcher.patch` is based on an upstream Chromium change request:
+
+**📎 Upstream CL**: [https://chromium-review.googlesource.com/c/chromium/src/+/6832165](https://chromium-review.googlesource.com/c/chromium/src/+/6832165)
+
+#### If the patch fails to apply:
+
+1. **Visit the CL** and check its merge status
+2. **Fix merge conflicts** in the CL to keep it mergeable with main
+3. **Download the updated diff**:
+   ```bash
+   # From the CL page, click "Download" and select "Patch"
+   # Or use git:
+   cd ~/omarchy-chromium-src/src
+   git fetch https://chromium.googlesource.com/chromium/src refs/changes/65/6832165/[LATEST_PATCHSET]
+   git format-patch -1 FETCH_HEAD -o ~/omarchy-chromium/
+   ```
+4. **Replace** `omarchy-theme-switcher.patch` with the new version
+5. **Test** the build with the updated patch
+
+> **Note**: Keeping the CL mergeable with Chromium main branch is crucial for maintaining this project. If you encounter merge conflicts, please help by updating the CL!
+
 ## 🐛 Troubleshooting
 
 ### Build Fails with Missing Headers
