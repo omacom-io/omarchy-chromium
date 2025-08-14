@@ -32,68 +32,212 @@ jobs:
           echo "Increment pkgrel: ${{ inputs.increment_pkgrel }}"
           echo "This workflow uses SKIP_BUILD=1 for testing AUR releases"
           
-      - name: Check for existing package
+      - name: Check for built Chromium source
         run: |
-          echo "=== Checking for Package Files ==="
+          echo "=== Checking for Built Chromium Source ==="
+          
+          CHROMIUM_SRC_DIR="$HOME/omarchy-chromium-src/src"
+          
+          if [[ ! -d "$CHROMIUM_SRC_DIR" ]]; then
+            echo "❌ Chromium source directory not found at $CHROMIUM_SRC_DIR"
+            echo "Please run a full build first to create the source checkout"
+            exit 1
+          fi
+          
+          # Check if build output exists
+          if [[ -f "$CHROMIUM_SRC_DIR/out/Release/chrome" ]]; then
+            echo "✅ Found built Chromium at $CHROMIUM_SRC_DIR/out/Release/chrome"
+            BUILD_SIZE=$(du -h "$CHROMIUM_SRC_DIR/out/Release/chrome" | cut -f1)
+            echo "Chrome binary size: $BUILD_SIZE"
+          else
+            echo "❌ Built Chrome binary not found at $CHROMIUM_SRC_DIR/out/Release/chrome"
+            echo "Please run a full build first"
+            exit 1
+          fi
+          
+      - name: Run quick release with makepkg (skip compile)
+        run: |
+          echo "=== Running Quick Release with makepkg (SKIP_BUILD=1) ==="
+          echo "This will package the existing built binaries without recompiling"
           
           # Get current package info
           PKGNAME=$(grep '^pkgname=' PKGBUILD | cut -d'=' -f2)
           PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
           PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
           
-          # Check if package exists
-          PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
+          # Increment pkgrel if requested
+          if [[ "${{ inputs.increment_pkgrel }}" == "true" ]]; then
+            echo "Incrementing pkgrel..."
+            NEW_PKGREL=$((PKGREL + 1))
+            sed -i "s/^pkgrel=.*/pkgrel=$NEW_PKGREL/" PKGBUILD
+            echo "Updated pkgrel from $PKGREL to $NEW_PKGREL"
+            PKGREL=$NEW_PKGREL
+          fi
           
+          # Run makepkg with SKIP_BUILD=1 environment variable
+          # This will use the existing built binaries and just package them
+          echo "Running: SKIP_BUILD=1 makepkg -s --noconfirm"
+          SKIP_BUILD=1 makepkg -s --noconfirm
+          
+          # Check that package was created
+          PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
           if [[ -f "$PACKAGE_FILE" ]]; then
-            echo "✅ Found existing package: $PACKAGE_FILE"
+            echo "✅ Package created: $PACKAGE_FILE"
             PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
             echo "Package size: $PACKAGE_SIZE"
           else
-            echo "❌ Package file not found: $PACKAGE_FILE"
-            echo "Available package files:"
-            ls -la *.pkg.tar.zst || echo "No package files found"
+            echo "❌ Package creation failed: $PACKAGE_FILE not found"
             exit 1
           fi
           
-      - name: Run quick release with skip build
+      - name: Create GitHub release
         run: |
-          echo "=== Running Quick Release ==="
-          echo "Using existing package file, skipping build..."
+          echo "=== Creating GitHub Release ==="
           
-          # Make do_update.sh executable
-          chmod +x do_update.sh
+          # Get package info
+          PKGNAME=$(grep '^pkgname=' PKGBUILD | cut -d'=' -f2)
+          PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+          PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+          FULL_VERSION="${PKGVER}-${PKGREL}"
+          PACKAGE_FILE="${PKGNAME}-${FULL_VERSION}-x86_64.pkg.tar.zst"
           
-          # Run with SKIP_BUILD=1 to use existing package
-          SKIP_BUILD=1 ./do_update.sh
+          # Check if gh CLI is available
+          if ! command -v gh &> /dev/null; then
+            echo "❌ GitHub CLI (gh) not found. Install with: sudo pacman -S github-cli"
+            exit 1
+          fi
           
-      - name: Commit PKGBUILD changes (quick release)
+          # Create release
+          RELEASE_TAG="v${FULL_VERSION}"
+          RELEASE_TITLE="Quick Release ${FULL_VERSION}"
+          RELEASE_NOTES="Quick release of Omarchy Chromium ${FULL_VERSION}
+
+          **Quick Release Notes:**
+          - Built from existing binaries (SKIP_BUILD=1)
+          - Used for testing AUR release process
+          - Based on Chromium ${PKGVER}
+          
+          **Installation:**
+          \`\`\`bash
+          wget https://github.com/omacom-io/omarchy-chromium/releases/download/${RELEASE_TAG}/${PACKAGE_FILE}
+          sudo pacman -U ${PACKAGE_FILE}
+          \`\`\`"
+          
+          # Delete existing release if it exists
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Deleting existing release $RELEASE_TAG..."
+            gh release delete "$RELEASE_TAG" --yes
+          fi
+          
+          # Create new release
+          echo "Creating release $RELEASE_TAG..."
+          gh release create "$RELEASE_TAG" \
+            --title "$RELEASE_TITLE" \
+            --notes "$RELEASE_NOTES" \
+            "$PACKAGE_FILE"
+          
+          echo "✅ Release created: https://github.com/omacom-io/omarchy-chromium/releases/tag/${RELEASE_TAG}"
+          
+      - name: Update AUR package
         run: |
-          echo "=== Committing PKGBUILD Changes (Quick Release) ==="
+          echo "=== Updating AUR Package ==="
+          
+          AUR_DIR="$HOME/BUILD_LAB/omarchy-chromium-bin"
+          
+          if [[ ! -d "$AUR_DIR" ]]; then
+            echo "❌ AUR directory not found at $AUR_DIR"
+            echo "Please clone omarchy-chromium-bin AUR package first"
+            exit 1
+          fi
+          
+          # Get package info
+          PKGNAME=$(grep '^pkgname=' PKGBUILD | cut -d'=' -f2)
+          PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+          PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+          FULL_VERSION="${PKGVER}-${PKGREL}"
+          PACKAGE_FILE="${PKGNAME}-${FULL_VERSION}-x86_64.pkg.tar.zst"
+          
+          # Calculate checksums
+          SHA256SUM=$(sha256sum "$PACKAGE_FILE" | cut -d' ' -f1)
+          DOWNLOAD_URL="https://github.com/omacom-io/omarchy-chromium/releases/download/v${FULL_VERSION}/${PACKAGE_FILE}"
+          
+          # Update AUR PKGBUILD
+          cd "$AUR_DIR"
+          
+          # Ensure clean working directory
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "⚠️  AUR directory has uncommitted changes, stashing..."
+            git stash
+          fi
+          
+          git pull
+          
+          # Create AUR PKGBUILD
+          cat > PKGBUILD << EOF
+          # Maintainer: Helmut Januschka <helmut@januschka.com>
+          
+          pkgname=omarchy-chromium-bin
+          pkgver=${PKGVER}
+          pkgrel=${PKGREL}
+          pkgdesc="A web browser built for speed, simplicity, and security, with patches for Omarchy (binary package)"
+          arch=('x86_64')
+          url="https://www.chromium.org/Home"
+          license=('BSD-3-Clause')
+          depends=('gtk3' 'nss' 'alsa-lib' 'xdg-utils' 'libxss' 'libcups' 'libgcrypt'
+                   'ttf-liberation' 'systemd' 'dbus' 'libpulse' 'pciutils' 'libva'
+                   'libffi' 'desktop-file-utils' 'hicolor-icon-theme')
+          provides=('chromium')
+          conflicts=('chromium' 'omarchy-chromium')
+          source=("${DOWNLOAD_URL}")
+          sha256sums=('${SHA256SUM}')
+          
+          package() {
+              cd "\$srcdir"
+              
+              # Extract the package
+              tar -xf "${PACKAGE_FILE}"
+              
+              # Copy everything to the target directory
+              cp -r usr "\$pkgdir/"
+          }
+          EOF
+          
+          # Update .SRCINFO
+          makepkg --printsrcinfo > .SRCINFO
+          
+          # Commit and push
+          git add PKGBUILD .SRCINFO
+          git commit -m "Quick release ${FULL_VERSION}
+
+          Quick release from GitHub Actions workflow.
+          Package size: $(du -h "$PACKAGE_FILE" | cut -f1)"
+          
+          git push
+          
+          echo "✅ AUR package updated"
+          
+      - name: Commit PKGBUILD changes (if pkgrel was incremented)
+        if: inputs.increment_pkgrel == true
+        run: |
+          echo "=== Committing PKGBUILD Changes (pkgrel incremented) ==="
           
           # Configure git for the action
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # Check if PKGBUILD was modified
-          if git diff --quiet PKGBUILD; then
-            echo "No PKGBUILD changes to commit"
-          else
-            echo "PKGBUILD was modified, committing changes..."
-            
-            # Get version info for commit message
-            PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
-            PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
-            
-            git add PKGBUILD
-            git commit -m "Quick release ${PKGVER}-${PKGREL}
+          # Get version info for commit message
+          PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+          PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+          
+          git add PKGBUILD
+          git commit -m "Quick release ${PKGVER}-${PKGREL}
 
-            Automated quick release via GitHub Actions workflow.
-            Used existing package file (SKIP_BUILD=1)."
-            
-            # Push the commit
-            git push
-            echo "✅ PKGBUILD changes committed and pushed"
-          fi
+          Incremented pkgrel for quick release via GitHub Actions workflow.
+          Built from existing binaries (SKIP_BUILD=1)."
+          
+          # Push the commit
+          git push
+          echo "✅ PKGBUILD changes committed and pushed"
           
       - name: Summary
         if: always()
