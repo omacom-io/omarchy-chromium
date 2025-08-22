@@ -25,21 +25,27 @@ if [[ ! -d "$AUR_DIR" ]]; then
     exit 1
 fi
 
-# Check if we should skip build
-if [[ "${SKIP_BUILD:-0}" == "1" ]]; then
-    echo "SKIP_BUILD=1 detected, skipping build steps..."
-    
+
     # Get package info from existing PKGBUILD
     PKGNAME=$(grep '^pkgname=' PKGBUILD | cut -d'=' -f2)
     PKGVER=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
     PKGREL=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
     FULL_VERSION="${PKGVER}-${PKGREL}"
+    # Try to find existing package file, or create it from built binaries
+    PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
+    PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
     
     echo "   Package: $PKGNAME"
     echo "   Version: $FULL_VERSION"
+
+if [[ "${ONLY_RELEASE:-0}" == "0" ]]; then
+
+# Check if we should skip build
+if [[ "${SKIP_BUILD:-0}" == "1" ]]; then
+    echo "SKIP_BUILD=1 detected, skipping build steps..."
     
-    # Try to find existing package file, or create it from built binaries
-    PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
+    
+
     if [[ ! -f "$PACKAGE_FILE" ]]; then
         echo "Package file not found: $PACKAGE_FILE"
         echo "Attempting to create package from existing built binaries..."
@@ -101,6 +107,8 @@ else
     echo "   Built: $PACKAGE_FILE"
     PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
     echo "   Size: $PACKAGE_SIZE"
+fi
+
 fi
 
 # Step 3: Create GitHub release (always runs)
