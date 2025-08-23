@@ -64,6 +64,7 @@ if [[ "${SKIP_BUILD:-0}" == "1" ]]; then
         
         # Run makepkg with SKIP_BUILD=1 to package existing built binaries
         echo "Running: SKIP_BUILD=1 makepkg -s --noconfirm"
+        rm -vfr src/ pkg/
         SKIP_BUILD=1 makepkg -s --noconfirm
         
         if [[ ! -f "$PACKAGE_FILE" ]]; then
@@ -80,12 +81,34 @@ if [[ "${SKIP_BUILD:-0}" == "1" ]]; then
             # Update pkgrel in PKGBUILD.arm64 to match
             sed -i "s/^pkgrel=.*/pkgrel=$NEW_PKGREL/" PKGBUILD.arm64
             
-            SKIP_BUILD=1 makepkg -s --noconfirm -p PKGBUILD.arm64
+            rm -vfr src/ pkg/
+            CARCH=aarch64 CC=aarch64-linux-gnu-gcc SKIP_BUILD=1 makepkg -s --noconfirm -p PKGBUILD.arm64
             
             if [[ -f "$PACKAGE_FILE_ARM64" ]]; then
                 echo "✅ ARM64 package created: $PACKAGE_FILE_ARM64"
                 PACKAGE_SIZE_ARM64=$(du -h "$PACKAGE_FILE_ARM64" | cut -f1)
             fi
+        fi
+    fi
+    
+    # Also check for ARM64 package even if x86_64 exists
+    if [[ -f "PKGBUILD.arm64" ]]; then
+        PACKAGE_FILE_ARM64="${PKGNAME}-${PKGVER}-${PKGREL}-aarch64.pkg.tar.zst"
+        
+        if [[ ! -f "$PACKAGE_FILE_ARM64" ]]; then
+            echo "ARM64 package not found, building from existing binaries..."
+            
+            # Update pkgrel in PKGBUILD.arm64 to match
+            sed -i "s/^pkgrel=.*/pkgrel=$PKGREL/" PKGBUILD.arm64
+            
+            rm -vfr src/ pkg/
+            CARCH=aarch64 CC=aarch64-linux-gnu-gcc SKIP_BUILD=1 makepkg -s --noconfirm -p PKGBUILD.arm64
+        fi
+        
+        if [[ -f "$PACKAGE_FILE_ARM64" ]]; then
+            echo "✅ ARM64 package available: $PACKAGE_FILE_ARM64"
+            PACKAGE_SIZE_ARM64=$(du -h "$PACKAGE_FILE_ARM64" | cut -f1)
+            echo "   ARM64 Size: $PACKAGE_SIZE_ARM64"
         fi
     fi
     
@@ -111,6 +134,7 @@ else
     
     # Step 2: Build package
     echo "2. Building package..."
+    rm -vfr src/ pkg/
     makepkg -s --noconfirm
     
     # Find the built package
@@ -131,8 +155,8 @@ else
         
         # Update pkgrel in PKGBUILD.arm64 to match
         sed -i "s/^pkgrel=.*/pkgrel=$PKGREL/" PKGBUILD.arm64
-        
-        SKIP_BUILD=1 makepkg -s --noconfirm -p PKGBUILD.arm64
+        rm -vfr src/ pkg/
+        CARCH=aarch64 CC=aarch64-linux-gnu-gcc SKIP_BUILD=1 makepkg -s --noconfirm -p PKGBUILD.arm64
         
         if [[ -f "$PACKAGE_FILE_ARM64" ]]; then
             echo "✅ ARM64 package built: $PACKAGE_FILE_ARM64"
@@ -154,9 +178,14 @@ Based on Chromium ${PKGVER} with Omarchy theme patches.
 
 **Installation:**
 \`\`\`bash
-# Download and install
+# x86_64 (Intel/AMD):
 wget https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/${PACKAGE_FILE}
 sudo pacman -U ${PACKAGE_FILE}
+${PACKAGE_FILE_ARM64:+
+# aarch64 (ARM64):
+wget https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/${PACKAGE_FILE_ARM64}
+sudo pacman -U ${PACKAGE_FILE_ARM64}
+}
 \`\`\`
 
 **Changes:**
@@ -165,8 +194,8 @@ sudo pacman -U ${PACKAGE_FILE}
 - Built with bundled toolchain for maximum compatibility
 
 **Package Info:**
-- Size: ${PACKAGE_SIZE}
-- Architecture: x86_64
+- x86_64: ${PACKAGE_SIZE}${PACKAGE_SIZE_ARM64:+
+- aarch64: ${PACKAGE_SIZE_ARM64}}
 - Maintainer: Helmut Januschka <helmut@januschka.com>"
 
 # Check if release already exists
