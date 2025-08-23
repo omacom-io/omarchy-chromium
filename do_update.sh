@@ -71,6 +71,22 @@ if [[ "${SKIP_BUILD:-0}" == "1" ]]; then
             exit 1
         fi
         echo "✅ Package created from existing built binaries"
+        
+        # Also build ARM64 package if PKGBUILD.arm64 exists
+        if [[ -f "PKGBUILD.arm64" ]]; then
+            echo "Building ARM64 package from existing binaries..."
+            PACKAGE_FILE_ARM64="${PKGNAME}-${PKGVER}-${PKGREL}-aarch64.pkg.tar.zst"
+            
+            # Update pkgrel in PKGBUILD.arm64 to match
+            sed -i "s/^pkgrel=.*/pkgrel=$NEW_PKGREL/" PKGBUILD.arm64
+            
+            SKIP_BUILD=1 makepkg -s --noconfirm -p PKGBUILD.arm64
+            
+            if [[ -f "$PACKAGE_FILE_ARM64" ]]; then
+                echo "✅ ARM64 package created: $PACKAGE_FILE_ARM64"
+                PACKAGE_SIZE_ARM64=$(du -h "$PACKAGE_FILE_ARM64" | cut -f1)
+            fi
+        fi
     fi
     
     echo "   Using existing package: $PACKAGE_FILE"
@@ -107,6 +123,23 @@ else
     echo "   Built: $PACKAGE_FILE"
     PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
     echo "   Size: $PACKAGE_SIZE"
+    
+    # Also build ARM64 package if PKGBUILD.arm64 exists
+    if [[ -f "PKGBUILD.arm64" ]]; then
+        echo "Building ARM64 package..."
+        PACKAGE_FILE_ARM64="${PKGNAME}-${PKGVER}-${PKGREL}-aarch64.pkg.tar.zst"
+        
+        # Update pkgrel in PKGBUILD.arm64 to match
+        sed -i "s/^pkgrel=.*/pkgrel=$PKGREL/" PKGBUILD.arm64
+        
+        SKIP_BUILD=1 makepkg -s --noconfirm -p PKGBUILD.arm64
+        
+        if [[ -f "$PACKAGE_FILE_ARM64" ]]; then
+            echo "✅ ARM64 package built: $PACKAGE_FILE_ARM64"
+            PACKAGE_SIZE_ARM64=$(du -h "$PACKAGE_FILE_ARM64" | cut -f1)
+            echo "   ARM64 Size: $PACKAGE_SIZE_ARM64"
+        fi
+    fi
 fi
 
 fi
@@ -143,10 +176,18 @@ if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
 fi
 
 echo "   Creating release $RELEASE_TAG..."
+# Create release with x86_64 package
 gh release create "$RELEASE_TAG" \
     --title "$RELEASE_TITLE" \
     --notes "$RELEASE_NOTES" \
     "$PACKAGE_FILE"
+
+# Upload ARM64 package if it exists
+if [[ -f "${PACKAGE_FILE_ARM64:-}" ]]; then
+    echo "   Uploading ARM64 package to release..."
+    gh release upload "$RELEASE_TAG" "$PACKAGE_FILE_ARM64"
+    echo "   ✓ ARM64 package uploaded"
+fi
 
 echo "   ✓ Release created: https://github.com/${GITHUB_REPO}/releases/tag/${RELEASE_TAG}"
 
@@ -166,13 +207,19 @@ git pull
 # Update PKGBUILD for binary package
 echo "   Updating AUR PKGBUILD..."
 
-# Get download URL
-DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/${PACKAGE_FILE}"
+# Get download URLs
+DOWNLOAD_URL_X86="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/${PACKAGE_FILE}"
+DOWNLOAD_URL_ARM64="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/${PACKAGE_FILE_ARM64:-${PKGNAME}-${PKGVER}-${PKGREL}-aarch64.pkg.tar.zst}"
 
 # Calculate checksums
 echo "   Calculating checksums..."
 cd "$CURRENT_DIR"
-SHA256SUM=$(sha256sum "$PACKAGE_FILE" | cut -d' ' -f1)
+SHA256SUM_X86=$(sha256sum "$PACKAGE_FILE" | cut -d' ' -f1)
+if [[ -f "${PACKAGE_FILE_ARM64:-}" ]]; then
+    SHA256SUM_ARM64=$(sha256sum "$PACKAGE_FILE_ARM64" | cut -d' ' -f1)
+else
+    SHA256SUM_ARM64="SKIP"  # Will be skipped in sha256sums array
+fi
 cd "$AUR_DIR"
 
 # Create/update PKGBUILD for binary package
@@ -183,7 +230,7 @@ pkgname=omarchy-chromium-bin
 pkgver=${PKGVER}
 pkgrel=${PKGREL}
 pkgdesc="A web browser built for speed, simplicity, and security, with patches for Omarchy (binary package)"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url="https://www.chromium.org/Home"
 license=('BSD-3-Clause')
 depends=('gtk3' 'nss' 'alsa-lib' 'xdg-utils' 'libxss' 'libcups' 'libgcrypt'
@@ -191,14 +238,18 @@ depends=('gtk3' 'nss' 'alsa-lib' 'xdg-utils' 'libxss' 'libcups' 'libgcrypt'
          'libffi' 'desktop-file-utils' 'hicolor-icon-theme')
 provides=('chromium')
 conflicts=('chromium' 'omarchy-chromium')
-source=("${DOWNLOAD_URL}")
-sha256sums=('${SHA256SUM}')
+
+# Architecture-specific sources
+source_x86_64=("${DOWNLOAD_URL_X86}")
+source_aarch64=("${DOWNLOAD_URL_ARM64}")
+sha256sums_x86_64=('${SHA256SUM_X86}')
+sha256sums_aarch64=('${SHA256SUM_ARM64}')
 
 package() {
     cd "\$srcdir"
     
-    # Extract the package
-    tar -xf "${PACKAGE_FILE}"
+    # Extract the package (filename varies by architecture)
+    tar -xf ${PKGNAME}-${PKGVER}-${PKGREL}-\${CARCH}.pkg.tar.zst
     
     # Copy everything to the target directory
     cp -r usr "\$pkgdir/"
