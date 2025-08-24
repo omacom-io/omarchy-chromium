@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+#set -x
 
 # Configuration
 CURRENT_DIR="$(pwd)"
@@ -33,7 +34,10 @@ fi
     FULL_VERSION="${PKGVER}-${PKGREL}"
     # Try to find existing package file, or create it from built binaries
     PACKAGE_FILE="${PKGNAME}-${PKGVER}-${PKGREL}-x86_64.pkg.tar.zst"
+    PACKAGE_SIZE=0
+    if [[ -f "$PACKAGE_FILE" ]]; then
     PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
+    fi 
     
     echo "   Package: $PKGNAME"
     echo "   Version: $FULL_VERSION"
