@@ -2,8 +2,8 @@
 # Maintainer: David Heinemeier Hansson <david@hey.com>
 
 pkgname=omarchy-chromium
-pkgver=139.0.7258.138
-pkgrel=4
+pkgver=139.0.7258.154
+pkgrel=2
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
@@ -101,7 +101,7 @@ prepare() {
     if (( _skip_build )); then
       echo "Skipping source preparation (using pre-built binaries)"
       # Create symlink for compatibility with package()
-      ln -sf "$_chromium_upstream_src/src" "$srcdir/chromium-$pkgver"
+      # ln -sf "$_chromium_upstream_src/src" "$srcdir/chromium-$pkgver"
       return 0
     fi
     
