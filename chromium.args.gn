@@ -27,5 +27,5 @@ is_debug = false
 # clang_use_chrome_plugins = false
 # clang_version = "20"
 
-# use_remoteexec = true
-# use_siso = true
+use_remoteexec = true
+use_siso = true

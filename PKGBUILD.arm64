@@ -11,7 +11,7 @@ _use_chromium_src=1  # Use official chromium source checkout
 _chromium_upstream_src="$HOME/omarchy-chromium-src"  # Path to chromium checkout (change to your path)
 _skip_build=${SKIP_BUILD:-0}  # Set to 1 to skip build (for packaging pre-built binaries)
 pkgdesc="A web browser built for speed, simplicity, and security, with patches for Omarchy"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')  # Include x86_64 to allow cross-compilation
 url="https://github.com/omacom-io/omarchy-chromium"
 license=('BSD-3-Clause')
 depends=('gtk3' 'nss' 'alsa-lib' 'xdg-utils' 'libxss' 'libcups' 'libgcrypt'
@@ -26,7 +26,7 @@ optdepends=('pipewire: WebRTC desktop sharing under Wayland'
             'org.freedesktop.secrets: password storage backend on GNOME / Xfce'
             'kwallet: support for storing passwords in KWallet on Plasma'
             'upower: Battery Status API support')
-options=('!lto') # Chromium adds its own flags for ThinLTO
+options=('!lto' '!strip') # Chromium adds its own flags for ThinLTO, disable strip for ARM64 cross-compilation
 
 # NEW: Conditional source handling
 if (( _use_chromium_src )); then
@@ -228,20 +228,20 @@ EOF
     fi
     
     
-    # Generate build files if not already present
-    if [[ ! -d "out/Release" ]]; then
-      echo "Generating build configuration..."
-      mkdir -p out/Release
+    # Generate build files if not already present (ARM64 uses out/aarch64)
+    if [[ ! -d "out/aarch64" ]]; then
+      echo "Generating build configuration for ARM64..."
+      mkdir -p out/aarch64
       
-      # Copy over the args.gn file
-      if [[ -f "$srcdir/../chromium.args.gn" ]]; then
-        cp "$srcdir/../chromium.args.gn" out/Release/args.gn
+      # Copy over the ARM64 args.gn file
+      if [[ -f "$srcdir/../chromium.args.arm64.gn" ]]; then
+        cp "$srcdir/../chromium.args.arm64.gn" out/aarch64/args.gn
       else
-        echo "ERROR: chromium.args.gn not found in package directory"
+        echo "ERROR: chromium.args.arm64.gn not found in package directory"
         exit 1
       fi
       
-      gn gen out/Release
+      gn gen out/aarch64
     fi
     
     # Apply patches to the upstream source
@@ -308,7 +308,6 @@ EOF
   # Add theme command-line switches support
   patch -Np1 -i ../omarchy-theme-switcher.patch
 
-
   patch -Np1 -i ../widevine-arm64-support.patch
 
   # Fixes for building with libstdc++ instead of libc++
@@ -361,19 +360,37 @@ build() {
       
       cd "$_chromium_upstream_src/src"
       
-      # Build with ninja
-      echo "Building Chromium (this will take a while)..."
+      # Build with ninja for ARM64
+      echo "Building Chromium for ARM64 (this will take a while)..."
       export NINJA_STATUS="[%f/%t (%p%%) %o/s %es] " 
-      autoninja -C out/Release chrome chrome_sandbox chromedriver.unstripped
+      autoninja -C out/aarch64 chrome chrome_sandbox chromedriver.unstripped
     fi
     
-    # Always build the launcher
+    # Skip launcher build for ARM64 when using SKIP_BUILD
     cd "$srcdir"
-    make -C chromium-launcher-$_launcher_ver
+    if [[ "${CARCH}" == "aarch64" ]] && [[ "${SKIP_BUILD:-0}" == "1" ]]; then
+      echo "Skipping launcher build for ARM64 cross-compilation"
+      # Create minimal structure for package() function compatibility
+      mkdir -p chromium-launcher-$_launcher_ver
+    else
+      make -C chromium-launcher-$_launcher_ver
+    fi
     return 0
   fi
 
-  make -C chromium-launcher-$_launcher_ver
+  # Build launcher for ARM64
+  if [[ "${CARCH}" == "aarch64" ]]; then
+    # Override CFLAGS to remove x86-64 specific flags for cross-compilation
+    export ORIGINAL_CFLAGS="$CFLAGS"
+    export CFLAGS="${CFLAGS/-march=x86-64/-march=armv8-a}"
+    export CFLAGS="${CFLAGS/-mtune=generic/}"
+    export CFLAGS="${CFLAGS/-fcf-protection/}"  # Not supported on ARM64
+    export CFLAGS="${CFLAGS/-mno-omit-leaf-frame-pointer/}"  # x86-64 specific
+    make -C chromium-launcher-$_launcher_ver
+    export CFLAGS="$ORIGINAL_CFLAGS"
+  else
+    make -C chromium-launcher-$_launcher_ver
+  fi
 
   cd chromium-$pkgver
 
@@ -468,15 +485,26 @@ build() {
   # https://crbug.com/957519#c122
   CXXFLAGS=${CXXFLAGS/-Wp,-D_GLIBCXX_ASSERTIONS}
 
-  gn gen out/Release --args="${_flags[*]}"
-  ninja -C out/Release chrome chrome_sandbox chromedriver.unstripped
+  gn gen out/aarch64 --args="${_flags[*]}"
+  ninja -C out/aarch64 chrome chrome_sandbox chromedriver.unstripped
 }
 
 package() {
-  cd chromium-launcher-$_launcher_ver
-  make PREFIX=/usr DESTDIR="$pkgdir" install
-  install -Dm644 LICENSE \
-    "$pkgdir/usr/share/licenses/chromium/LICENSE.launcher"
+  # Skip launcher installation for ARM64 when cross-compiling
+  if [[ "${CARCH}" != "aarch64" ]] || [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+    cd chromium-launcher-$_launcher_ver
+    make PREFIX=/usr DESTDIR="$pkgdir" install
+    install -Dm644 LICENSE \
+      "$pkgdir/usr/share/licenses/chromium/LICENSE.launcher"
+  else
+    echo "Skipping launcher installation for ARM64 cross-compilation"
+    # Create a simple symlink instead
+    mkdir -p "$pkgdir/usr/bin"
+    ln -s /usr/lib/chromium/chromium "$pkgdir/usr/bin/chromium"
+    # Create dummy license file
+    mkdir -p "$pkgdir/usr/share/licenses/chromium"
+    echo "Launcher skipped for ARM64 cross-compilation" > "$pkgdir/usr/share/licenses/chromium/LICENSE.launcher"
+  fi
 
   # Handle different source locations
   if (( _use_chromium_src )); then
@@ -485,9 +513,17 @@ package() {
     cd ../chromium-$pkgver
   fi
 
-  install -D out/Release/chrome "$pkgdir/usr/lib/chromium/chromium"
-  install -D out/Release/chromedriver.unstripped "$pkgdir/usr/bin/chromedriver"
-  install -Dm4755 out/Release/chrome_sandbox "$pkgdir/usr/lib/chromium/chrome-sandbox"
+  # Install from ARM64 build directory (use cp to preserve binary integrity)
+  mkdir -p "$pkgdir/usr/lib/chromium"
+  cp out/aarch64/chrome "$pkgdir/usr/lib/chromium/chromium"
+  chmod 755 "$pkgdir/usr/lib/chromium/chromium"
+  
+  mkdir -p "$pkgdir/usr/bin"
+  cp out/aarch64/chromedriver.unstripped "$pkgdir/usr/bin/chromedriver"
+  chmod 755 "$pkgdir/usr/bin/chromedriver"
+  
+  cp out/aarch64/chrome_sandbox "$pkgdir/usr/lib/chromium/chrome-sandbox"
+  chmod 4755 "$pkgdir/usr/lib/chromium/chrome-sandbox"
 
   install -Dm644 chrome/installer/linux/common/desktop.template \
     "$pkgdir/usr/share/applications/chromium.desktop"
@@ -532,8 +568,9 @@ package() {
     toplevel_files+=(icudtl.dat)
   fi
 
-  cp "${toplevel_files[@]/#/out/Release/}" "$pkgdir/usr/lib/chromium/"
-  install -Dm644 -t "$pkgdir/usr/lib/chromium/locales" out/Release/locales/*.pak
+  # Copy from ARM64 build directory
+  cp "${toplevel_files[@]/#/out/aarch64/}" "$pkgdir/usr/lib/chromium/"
+  install -Dm644 -t "$pkgdir/usr/lib/chromium/locales" out/aarch64/locales/*.pak
 
   for size in 24 48 64 128 256; do
     install -Dm644 "chrome/app/theme/chromium/product_logo_$size.png" \

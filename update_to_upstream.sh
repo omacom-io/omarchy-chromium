@@ -27,14 +27,20 @@ if [[ "$UPSTREAM_VERSION" == "$CURRENT_VERSION" ]]; then
     exit 0
 fi
 
-# Step 2: Update our PKGBUILD
-echo "2. Updating PKGBUILD version from $CURRENT_VERSION to $UPSTREAM_VERSION..."
+# Step 2: Update our PKGBUILD files
+echo "2. Updating PKGBUILD files from $CURRENT_VERSION to $UPSTREAM_VERSION..."
+
+# Update main PKGBUILD
 sed -i "s/^pkgver=.*/pkgver=$UPSTREAM_VERSION/" PKGBUILD
-
-# Also update pkgrel to 1 for new version
 sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
-
 echo "   PKGBUILD updated!"
+
+# Update ARM64 PKGBUILD if it exists
+if [[ -f "PKGBUILD.arm64" ]]; then
+    sed -i "s/^pkgver=.*/pkgver=$UPSTREAM_VERSION/" PKGBUILD.arm64
+    sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD.arm64
+    echo "   PKGBUILD.arm64 updated!"
+fi
 
 # Step 3: Update Chromium source checkout
 echo "3. Updating Chromium source checkout..."
@@ -66,7 +72,7 @@ echo "   Stashing any local changes..."
 git stash push -m "Auto-stash before update to $UPSTREAM_VERSION" || true
 
 echo "   Fetching latest tags..."
-git fetch --tags --depth=1 origin refs/tags/$UPSTREAM_VERSION:refs/tags/$UPSTREAM_VERSION 2>/dev/null || {
+git fetch -vvv --tags --depth=1 origin refs/tags/$UPSTREAM_VERSION:refs/tags/$UPSTREAM_VERSION  || {
     echo "   Tag $UPSTREAM_VERSION not found, trying full fetch..."
     git fetch --tags
 }
@@ -147,6 +153,12 @@ cd "$CURRENT_DIR"
 echo ""
 echo "=== Update Complete! ==="
 echo "Updated from $CURRENT_VERSION to $UPSTREAM_VERSION"
+echo ""
+echo "Files updated:"
+echo "- PKGBUILD"
+if [[ -f "PKGBUILD.arm64" ]]; then
+    echo "- PKGBUILD.arm64"
+fi
 echo ""
 echo "Next steps:"
 echo "1. Review any changes: git diff"
