@@ -1,0 +1,34 @@
+# Build arguments go here.
+# See "gn args <out_dir> --list" for available build arguments.
+is_official_build = true
+symbol_level = 0
+treat_warnings_as_errors = false
+fatal_linker_warnings = false
+disable_fieldtrial_testing_config = true
+blink_enable_generated_code_formatting = false
+ffmpeg_branding = "Chrome"
+proprietary_codecs = true
+rtc_use_pipewire = true
+link_pulseaudio = true
+use_custom_libcxx = true
+enable_hangout_services_extension = true
+enable_widevine = true
+enable_nacl = false
+use_qt5 = false
+use_qt6 = true
+moc_qt6_path = "/usr/lib/qt6"
+# use_partition_alloc = true
+google_api_key = "AIzaSyDwr302FpOSkGRpLlUpPThNTDPbXcIn_FM"
+dcheck_always_on = false
+is_debug = false
+# use_sysroot = false
+# v8_enable_debugging_features = false
+# clang_base_path = "/usr"
+# clang_use_chrome_plugins = false
+# clang_version = "20"
+
+target_cpu = "arm64"
+target_os = "linux"
+
+use_remoteexec = true
+use_siso = true
