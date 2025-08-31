@@ -308,6 +308,9 @@ EOF
   # Add theme command-line switches support
   patch -Np1 -i ../omarchy-theme-switcher.patch
 
+  # add patch for policy reloading
+  patch -Np1 -i ../omarchy-policy-reload.patch
+
   patch -Np1 -i ../widevine-arm64-support.patch
 
   # Fixes for building with libstdc++ instead of libc++

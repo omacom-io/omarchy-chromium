@@ -3,7 +3,7 @@
 
 pkgname=omarchy-chromium
 pkgver=139.0.7258.154
-pkgrel=2
+pkgrel=1001
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
@@ -307,6 +307,9 @@ EOF
 
   # Add theme command-line switches support
   patch -Np1 -i ../omarchy-theme-switcher.patch
+
+  # add patch for policy reloading
+  patch -Np1 -i ../omarchy-policy-reload.patch
 
 
   patch -Np1 -i ../widevine-arm64-support.patch
