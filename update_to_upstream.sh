@@ -1,4 +1,5 @@
 #!/bin/bash
+# set -x
 set -euo pipefail
 
 # Configuration
@@ -72,10 +73,6 @@ echo "   Stashing any local changes..."
 git stash push -m "Auto-stash before update to $UPSTREAM_VERSION" || true
 
 echo "   Fetching latest tags..."
-git fetch -vvv --tags --depth=1 origin refs/tags/$UPSTREAM_VERSION:refs/tags/$UPSTREAM_VERSION  || {
-    echo "   Tag $UPSTREAM_VERSION not found, trying full fetch..."
-    # git fetch --tags
-}
 
 echo "   Checking out version $UPSTREAM_VERSION..."
 git fetch origin tag $UPSTREAM_VERSION
