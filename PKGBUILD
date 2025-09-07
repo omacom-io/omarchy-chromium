@@ -157,7 +157,9 @@ EOF
       
       # Simple checkout - already have the tag
       echo "Checking out version $pkgver..."
-      git checkout -f "$pkgver"
+      git stash
+      git fetch origin tag $pkgver
+      git checkout tags/$pkgver
       
       # Only sync dependencies, not the main src repo
       echo "Syncing dependencies..."
