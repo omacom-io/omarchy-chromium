@@ -91,7 +91,7 @@ index e398d8d58e9f8..ca97b0142e799 100644
 +// Forces an immediate refresh of policy sources. This can be useful for
 +// applying policy changes instantly rather than waiting for the next scheduled
 +// policy refresh interval.
-+const char kForcePolicyReload[] = "force-policy-reload";
++const char kForcePolicyReload[] = "refresh-platform-policy";
 +
  // Sets the theme color for all running Chrome windows.
  // The format is "r,g,b", where r, g, b are numeric values from 0 to 255.
