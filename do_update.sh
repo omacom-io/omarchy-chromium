@@ -160,7 +160,7 @@ else
         # Update pkgrel in PKGBUILD.arm64 to match
         sed -i "s/^pkgrel=.*/pkgrel=$PKGREL/" PKGBUILD.arm64
         rm -vfr src/ pkg/
-        CARCH=aarch64 CC=aarch64-linux-gnu-gcc SKIP_BUILD=1 makepkg -s --noconfirm -p PKGBUILD.arm64
+        CARCH=aarch64 CC=aarch64-linux-gnu-gcc makepkg -s --noconfirm -p PKGBUILD.arm64
         
         if [[ -f "$PACKAGE_FILE_ARM64" ]]; then
             echo "✅ ARM64 package built: $PACKAGE_FILE_ARM64"
