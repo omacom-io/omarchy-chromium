@@ -74,11 +74,12 @@ git stash push -m "Auto-stash before update to $UPSTREAM_VERSION" || true
 echo "   Fetching latest tags..."
 git fetch -vvv --tags --depth=1 origin refs/tags/$UPSTREAM_VERSION:refs/tags/$UPSTREAM_VERSION  || {
     echo "   Tag $UPSTREAM_VERSION not found, trying full fetch..."
-    git fetch --tags
+    # git fetch --tags
 }
 
 echo "   Checking out version $UPSTREAM_VERSION..."
-git checkout "$UPSTREAM_VERSION"
+git fetch origin tag $UPSTREAM_VERSION
+git checkout tags/$UPSTREAM_VERSION
 
 echo "   Updating .gclient for PGO profiles..."
 cd "$CHROMIUM_SRC_DIR"
