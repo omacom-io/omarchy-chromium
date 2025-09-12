@@ -53,6 +53,7 @@ if [[ ! -d "$CHROMIUM_SRC_DIR/src" ]]; then
 fi
 
 cd "$CHROMIUM_SRC_DIR/src"
+build/linux/sysroot_scripts/install-sysroot.py --arch=arm64
 
 # Setup depot_tools if not in PATH
 if ! command -v git &> /dev/null; then
