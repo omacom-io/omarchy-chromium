@@ -75,8 +75,12 @@ git stash push -m "Auto-stash before update to $UPSTREAM_VERSION" || true
 echo "   Fetching latest tags..."
 
 echo "   Checking out version $UPSTREAM_VERSION..."
-git fetch origin tag $UPSTREAM_VERSION
+git fetch  --depth=1   origin tag $UPSTREAM_VERSION
 git checkout tags/$UPSTREAM_VERSION
+
+git reflog expire --expire=now --all
+git gc --prune=now
+
 
 echo "   Updating .gclient for PGO profiles..."
 cd "$CHROMIUM_SRC_DIR"
