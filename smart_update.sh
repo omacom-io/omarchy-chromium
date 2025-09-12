@@ -44,6 +44,7 @@ if ./check_upstream.sh; then
     echo "========================================================"
     echo "Running do_update.sh to build and release..."
     echo ""
+    rm -vfr ~/omarchy-chromium-src/src/out/*
     ./do_update.sh
     
     echo ""
