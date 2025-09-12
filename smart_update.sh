@@ -30,6 +30,8 @@ if ./check_upstream.sh; then
     echo ""
     echo "Step 2: Upstream changes detected, proceeding with update..."
     echo "========================================================"
+
+    rm -vfr ~/omarchy-chromium-src/src/out/*
     
     # Update to latest upstream version
     echo ""
@@ -44,7 +46,7 @@ if ./check_upstream.sh; then
     echo "========================================================"
     echo "Running do_update.sh to build and release..."
     echo ""
-    rm -vfr ~/omarchy-chromium-src/src/out/*
+
     ./do_update.sh
     
     echo ""
