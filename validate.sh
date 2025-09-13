@@ -45,19 +45,60 @@ normalize_arch() {
     esac
 }
 
+# Function to check launcher script for ARM64
+check_arm64_launcher() {
+    local temp_dir=$1
+    local expected_arch=$2
+
+    if [[ "$expected_arch" != "aarch64" ]]; then
+        return 0  # Only check for ARM64 packages
+    fi
+
+    local launcher_path="$temp_dir/usr/bin/chromium"
+    if [[ ! -f "$launcher_path" ]]; then
+        print_status "$RED" "  ❌ ARM64 LAUNCHER MISSING: /usr/bin/chromium not found"
+        return 1
+    fi
+
+    # Check if it's a bash script (not a binary)
+    local file_info=$(file "$launcher_path" 2>/dev/null || echo "unknown")
+    if [[ "$file_info" == *"shell script"* ]] || [[ "$file_info" == *"text executable"* ]]; then
+        # Verify it's our bash launcher by checking for key identifiers
+        if grep -q "CHROMIUM_BINARY=" "$launcher_path" 2>/dev/null && \
+           grep -q "LAUNCHER_VERSION.*bash" "$launcher_path" 2>/dev/null; then
+            print_status "$GREEN" "  ✅ ARM64 bash launcher: /usr/bin/chromium (shell script)"
+            return 0
+        else
+            print_status "$YELLOW" "  ⚠️  ARM64 launcher exists but may not be our bash launcher"
+            return 0
+        fi
+    elif [[ "$file_info" == *"ELF"* ]]; then
+        print_status "$RED" "  ❌ ARM64 LAUNCHER ERROR: /usr/bin/chromium is an ELF binary (should be bash script for ARM64)"
+        return 1
+    else
+        print_status "$YELLOW" "  ⚠️  ARM64 launcher has unexpected file type: $file_info"
+        return 0
+    fi
+}
+
 # Function to check architecture of a binary file
 check_binary_arch() {
     local filepath=$1
     local expected_arch=$2
-    
+
     # Check if file exists and is executable
     if [[ ! -f "$filepath" ]]; then
         return 0  # Skip non-existent files
     fi
-    
+
+    # Skip the launcher for ARM64 - it should be a bash script, not a binary
+    if [[ "$expected_arch" == "aarch64" && "$filepath" == *"/usr/bin/chromium" ]]; then
+        return 0  # This is handled by check_arm64_launcher function
+    fi
+
     # Use file command to get architecture info
     local file_info=$(file "$filepath" 2>/dev/null || echo "unknown")
-    
+
     # Extract architecture from file output
     local actual_arch=""
     if [[ "$file_info" == *"x86-64"* ]] || [[ "$file_info" == *"x86_64"* ]]; then
@@ -78,7 +119,7 @@ check_binary_arch() {
         # Not an executable binary, skip
         return 0
     fi
-    
+
     if [[ -n "$actual_arch" && "$actual_arch" != "$expected_arch" ]]; then
         print_status "$RED" "  ❌ ARCH MISMATCH: $filepath"
         print_status "$RED" "     Expected: $expected_arch, Found: $actual_arch"
@@ -87,7 +128,7 @@ check_binary_arch() {
         print_status "$GREEN" "  ✅ $filepath ($actual_arch)"
         return 0
     fi
-    
+
     return 0
 }
 
@@ -124,11 +165,16 @@ validate_zst_package() {
         fi
     done < <(find "$temp_dir" -type f \( -executable -o -name "*.so*" \) -print0 2>/dev/null)
     
+    # Special check for ARM64 launcher script
+    if ! check_arm64_launcher "$temp_dir" "$expected_arch"; then
+        validation_failed=1
+    fi
+
     if [[ ${#binary_files[@]} -eq 0 ]]; then
         print_status "$YELLOW" "  ⚠️  No binary files found in package"
     else
         print_status "$YELLOW" "  Found ${#binary_files[@]} binary files to check"
-        
+
         # Check each binary file
         for binary in "${binary_files[@]}"; do
             if ! check_binary_arch "$binary" "$expected_arch"; then

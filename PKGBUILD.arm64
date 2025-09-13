@@ -3,7 +3,7 @@
 
 pkgname=omarchy-chromium
 pkgver=140.0.7339.127
-pkgrel=1
+pkgrel=2
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
@@ -31,21 +31,25 @@ options=('!lto' '!strip') # Chromium adds its own flags for ThinLTO, disable str
 # NEW: Conditional source handling
 if (( _use_chromium_src )); then
   # Only need launcher when using existing chromium source
-  source=(https://github.com/foutrelis/chromium-launcher/archive/v$_launcher_ver/chromium-launcher-$_launcher_ver.tar.gz)
-  sha256sums=('213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a')
+  source=(https://github.com/foutrelis/chromium-launcher/archive/v$_launcher_ver/chromium-launcher-$_launcher_ver.tar.gz
+          chromium-launcher.sh)
+  sha256sums=('213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a'
+              'SKIP')
 else
   source=(https://commondatastorage.googleapis.com/chromium-browser-official/chromium-$pkgver-lite.tar.xz
           https://github.com/foutrelis/chromium-launcher/archive/v$_launcher_ver/chromium-launcher-$_launcher_ver.tar.gz
           chromium-138-nodejs-version-check.patch
           compiler-rt-adjust-paths.patch
           increase-fortify-level.patch
-          use-oauth2-client-switches-as-default.patch)
+          use-oauth2-client-switches-as-default.patch
+          chromium-launcher.sh)
   sha256sums=('8cd37b224dba4fc5e3c8ac98cc278d17a713a3b5a2f1dbb241ad94caca83d630'
               '213e50f48b67feb4441078d50b0fd431df34323be15be97c55302d3fdac4483a'
               '11a96ffa21448ec4c63dd5c8d6795a1998d8e5cd5a689d91aea4d2bdd13fb06e'
               'a6507371588ed4d87d6501220249264abfbcd814771cc1ba351e0ac6cc987400'
               'd634d2ce1fc63da7ac41f432b1e84c59b7cceabf19d510848a7cff40c8025342'
-              'e6da901e4d0860058dc2f90c6bbcdc38a0cf4b0a69122000f62204f24fa7e374')
+              'e6da901e4d0860058dc2f90c6bbcdc38a0cf4b0a69122000f62204f24fa7e374'
+              'SKIP')
 fi
 
 if (( _manual_clone )); then
@@ -373,39 +377,23 @@ build() {
       autoninja -C out/aarch64 chrome chrome_sandbox chromedriver.unstripped
     fi
     
-    # Skip launcher build for ARM64 when using SKIP_BUILD
+    # Skip launcher build for ARM64 - always skip since we can't cross-compile it easily
     cd "$srcdir"
-    if [[ "${CARCH}" == "aarch64" ]] && [[ "${SKIP_BUILD:-0}" == "1" ]]; then
-      echo "Skipping launcher build for ARM64 cross-compilation"
+    if [[ "${CARCH}" == "aarch64" ]]; then
+      echo "Skipping launcher build for ARM64 (will use direct symlink instead)"
       # Create minimal structure for package() function compatibility
       mkdir -p chromium-launcher-$_launcher_ver
     else
-      # Fix CFLAGS for ARM64 cross-compilation
-      if [[ "${CARCH}" == "aarch64" ]] || [[ -n "${CROSS_COMPILE}" ]]; then
-        export ORIGINAL_CFLAGS="$CFLAGS"
-        export CFLAGS="${CFLAGS/-march=x86-64/-march=armv8-a}"
-        export CFLAGS="${CFLAGS/-mtune=generic/}"
-        export CFLAGS="${CFLAGS/-fcf-protection/}"  # Not supported on ARM64
-        export CFLAGS="${CFLAGS/-mno-omit-leaf-frame-pointer/}"  # x86-64 specific
-        make -C chromium-launcher-$_launcher_ver CC=aarch64-linux-gnu-gcc
-        export CFLAGS="$ORIGINAL_CFLAGS"
-      else
-        make -C chromium-launcher-$_launcher_ver
-      fi
+      # Build launcher only for x86_64
+      make -C chromium-launcher-$_launcher_ver
     fi
     return 0
   fi
 
-  # Build launcher for ARM64
-  if [[ "${CARCH}" == "aarch64" ]] || [[ -n "${CROSS_COMPILE}" ]]; then
-    # Override CFLAGS to remove x86-64 specific flags for cross-compilation
-    export ORIGINAL_CFLAGS="$CFLAGS"
-    export CFLAGS="${CFLAGS/-march=x86-64/-march=armv8-a}"
-    export CFLAGS="${CFLAGS/-mtune=generic/}"
-    export CFLAGS="${CFLAGS/-fcf-protection/}"  # Not supported on ARM64
-    export CFLAGS="${CFLAGS/-mno-omit-leaf-frame-pointer/}"  # x86-64 specific
-    make -C chromium-launcher-$_launcher_ver CC=aarch64-linux-gnu-gcc
-    export CFLAGS="$ORIGINAL_CFLAGS"
+  # Build launcher only for x86_64
+  if [[ "${CARCH}" == "aarch64" ]]; then
+    echo "Skipping launcher build for ARM64 (will use direct symlink instead)"
+    mkdir -p chromium-launcher-$_launcher_ver
   else
     make -C chromium-launcher-$_launcher_ver
   fi
@@ -508,20 +496,21 @@ build() {
 }
 
 package() {
-  # Skip launcher installation for ARM64 when cross-compiling
-  if [[ "${CARCH}" != "aarch64" ]] || [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+  # Handle launcher installation
+  if [[ "${CARCH}" == "aarch64" ]]; then
+    echo "Installing bash launcher for ARM64 (feature-parity with C launcher)"
+    # Install the bash launcher script for ARM64
+    mkdir -p "$pkgdir/usr/bin"
+    install -Dm755 "$srcdir/chromium-launcher.sh" "$pkgdir/usr/bin/chromium"
+    # Create info file about launcher
+    mkdir -p "$pkgdir/usr/share/licenses/chromium"
+    echo "ARM64 build: Using bash launcher script (feature-parity with C launcher)" > "$pkgdir/usr/share/licenses/chromium/LICENSE.launcher"
+  else
+    # Install the C launcher for x86_64
     cd chromium-launcher-$_launcher_ver
     make PREFIX=/usr DESTDIR="$pkgdir" install
     install -Dm644 LICENSE \
       "$pkgdir/usr/share/licenses/chromium/LICENSE.launcher"
-  else
-    echo "Skipping launcher installation for ARM64 cross-compilation"
-    # Create a simple symlink instead
-    mkdir -p "$pkgdir/usr/bin"
-    ln -s /usr/lib/chromium/chromium "$pkgdir/usr/bin/chromium"
-    # Create dummy license file
-    mkdir -p "$pkgdir/usr/share/licenses/chromium"
-    echo "Launcher skipped for ARM64 cross-compilation" > "$pkgdir/usr/share/licenses/chromium/LICENSE.launcher"
   fi
 
   # Handle different source locations
