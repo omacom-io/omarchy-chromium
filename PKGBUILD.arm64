@@ -2,8 +2,8 @@
 # Maintainer: David Heinemeier Hansson <david@hey.com>
 
 pkgname=omarchy-chromium
-pkgver=140.0.7339.41
-pkgrel=2
+pkgver=140.0.7339.127
+pkgrel=1
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
@@ -380,20 +380,31 @@ build() {
       # Create minimal structure for package() function compatibility
       mkdir -p chromium-launcher-$_launcher_ver
     else
-      make -C chromium-launcher-$_launcher_ver
+      # Fix CFLAGS for ARM64 cross-compilation
+      if [[ "${CARCH}" == "aarch64" ]] || [[ -n "${CROSS_COMPILE}" ]]; then
+        export ORIGINAL_CFLAGS="$CFLAGS"
+        export CFLAGS="${CFLAGS/-march=x86-64/-march=armv8-a}"
+        export CFLAGS="${CFLAGS/-mtune=generic/}"
+        export CFLAGS="${CFLAGS/-fcf-protection/}"  # Not supported on ARM64
+        export CFLAGS="${CFLAGS/-mno-omit-leaf-frame-pointer/}"  # x86-64 specific
+        make -C chromium-launcher-$_launcher_ver CC=aarch64-linux-gnu-gcc
+        export CFLAGS="$ORIGINAL_CFLAGS"
+      else
+        make -C chromium-launcher-$_launcher_ver
+      fi
     fi
     return 0
   fi
 
   # Build launcher for ARM64
-  if [[ "${CARCH}" == "aarch64" ]]; then
+  if [[ "${CARCH}" == "aarch64" ]] || [[ -n "${CROSS_COMPILE}" ]]; then
     # Override CFLAGS to remove x86-64 specific flags for cross-compilation
     export ORIGINAL_CFLAGS="$CFLAGS"
     export CFLAGS="${CFLAGS/-march=x86-64/-march=armv8-a}"
     export CFLAGS="${CFLAGS/-mtune=generic/}"
     export CFLAGS="${CFLAGS/-fcf-protection/}"  # Not supported on ARM64
     export CFLAGS="${CFLAGS/-mno-omit-leaf-frame-pointer/}"  # x86-64 specific
-    make -C chromium-launcher-$_launcher_ver
+    make -C chromium-launcher-$_launcher_ver CC=aarch64-linux-gnu-gcc
     export CFLAGS="$ORIGINAL_CFLAGS"
   else
     make -C chromium-launcher-$_launcher_ver
