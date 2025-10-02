@@ -1,0 +1,97 @@
+{
+  "name": "Chromium Build Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chromium-build-failure",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a014b81c-730e-4339-87e8-e47a6ab7c470",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        -128
+      ],
+      "webhookId": "chromium-build-failure"
+    },
+    {
+      "parameters": {
+        "chatId": "=954799023",
+        "text": "={{ $json.body.status === 'success' ? '✅ *Chromium Build Successful*\\n\\n*Message:* ' + $json.body.message + '\\n*Time:* ' + $json.body.timestamp : '🚨 *Chromium Build Failed*\\n\\n*Step:* ' + $json.body.step + '\\n*Error:* ' + $json.body.error + '\\n*Time:* ' + $json.body.timestamp + '\\n*Status:* ' + $json.body.status }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "e3fb8916-0670-426e-b133-6e88845f2c24",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -128
+      ],
+      "webhookId": "bff790b6-f520-49ee-8a57-5463aa58941d",
+      "credentials": {
+        "telegramApi": {
+          "id": "rDhdYQfwoBzefoPV",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Notification sent\" } }}",
+        "options": {}
+      },
+      "id": "847fcfa0-2d37-49a6-9071-b6a404299ba0",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -128
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b12cdb2f-80ee-4d2f-a494-48264671f3be",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a74f4a480558ce153482a7b93c294b608cdb618a7b526d08d32fd2370655e73d"
+  },
+  "id": "cz7CuHgRe661uQyS",
+  "tags": []
+}

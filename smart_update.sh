@@ -89,6 +89,14 @@ if ./check_upstream.sh; then
     echo "✓ Updated to latest upstream Chromium"
     echo "✓ Built and released new package"
     echo "✓ AUR package updated"
+
+    # Send success notification
+    if [[ -n "$WEBHOOK_URL" ]]; then
+        curl -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"status\":\"success\",\"step\":\"completed\",\"message\":\"AUR package updated successfully\",\"timestamp\":\"$(date -Iseconds)\"}" \
+            2>/dev/null || true
+    fi
 else
     echo ""
     echo "=== No Action Needed ==="
