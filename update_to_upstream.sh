@@ -3,19 +3,17 @@
 set -euo pipefail
 
 # Configuration
-ARCH_PKGBUILD_URL="https://gitlab.archlinux.org/archlinux/packaging/packages/chromium/-/raw/main/PKGBUILD"
+CHROMIUM_DASH_URL="https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Linux&num=1"
 CHROMIUM_SRC_DIR="$HOME/omarchy-chromium-src"
 CURRENT_DIR="$(pwd)"
 
 echo "=== Omarchy Chromium Upstream Update Script ==="
 
-# Step 1: Fetch upstream PKGBUILD and extract version
-echo "1. Fetching upstream PKGBUILD to get latest version..."
-TEMP_PKGBUILD=$(mktemp)
-curl -s "$ARCH_PKGBUILD_URL" -o "$TEMP_PKGBUILD"
+# Step 1: Fetch latest version from Chromium Dashboard
+echo "1. Fetching latest version from Chromium Dashboard..."
 
-# Extract pkgver from upstream PKGBUILD
-UPSTREAM_VERSION=$(grep '^pkgver=' "$TEMP_PKGBUILD" | cut -d'=' -f2)
+# Extract version from Chromium Dashboard API using jq
+UPSTREAM_VERSION=$(curl -s "$CHROMIUM_DASH_URL" | jq -r '.[0].version')
 echo "   Upstream version: $UPSTREAM_VERSION"
 
 # Get current version from our PKGBUILD
@@ -24,7 +22,6 @@ echo "   Current version:  $CURRENT_VERSION"
 
 if [[ "$UPSTREAM_VERSION" == "$CURRENT_VERSION" ]]; then
     echo "   Already up to date!"
-    rm -f "$TEMP_PKGBUILD"
     exit 0
 fi
 
@@ -169,5 +166,3 @@ echo "2. Build: makepkg -s"
 echo "3. Test the build"
 echo ""
 echo "The Chromium source is ready at: $CHROMIUM_SRC_DIR/src"
-
-rm -f "$TEMP_PKGBUILD"
