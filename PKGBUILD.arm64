@@ -97,6 +97,7 @@ depends+=(${_system_libs[@]})
 _google_api_key=AIzaSyDwr302FpOSkGRpLlUpPThNTDPbXcIn_FM
 
 prepare() {
+  export SISO_CREDENTIAL_HELPER=gcloud
   # Handle official chromium source checkout
   if (( _use_chromium_src )); then
     echo "Using official Chromium source checkout at $_chromium_upstream_src"
