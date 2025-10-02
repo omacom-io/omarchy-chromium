@@ -26,9 +26,6 @@ send_failure_notification() {
 # Trap errors and send notifications
 trap 'send_failure_notification "Script failed at line $LINENO" "unknown"' ERR
 
-send_failure_notification "AHAHAHAHAH" "UNKOWN"
-exit
-
 echo "=== Omarchy Chromium Smart Update ==="
 echo "This script only builds and releases when upstream Chromium has changes"
 echo ""
