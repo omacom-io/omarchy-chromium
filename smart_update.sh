@@ -97,6 +97,10 @@ if ./check_upstream.sh; then
             -d "{\"status\":\"success\",\"step\":\"completed\",\"message\":\"AUR package updated successfully\",\"timestamp\":\"$(date -Iseconds)\"}" \
             2>/dev/null || true
     fi
+    git add PKGBUILD
+    git add PKGBUILD.arm64
+    git commit -m "bump"
+    git push
 else
     echo ""
     echo "=== No Action Needed ==="
