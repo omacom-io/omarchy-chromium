@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-export PATH=~/depot_tools/:$PATH
+export PATH=/home/arch/google-cloud-sdk/bin/:~/depot_tools/:$PATH
 export SISO_CREDENTIAL_HELPER=gcloud
 
 # smart_update.sh - Only builds and pushes to AUR when upstream changes are detected
