@@ -1,11 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-# check_upstream.sh - Check if upstream Arch chromium has a newer version
+# check_upstream.sh - Check if upstream Chromium has a newer version
 # Returns 0 if update needed, 1 if already up-to-date
 
 # Configuration
-ARCH_PKGBUILD_URL="https://gitlab.archlinux.org/archlinux/packaging/packages/chromium/-/raw/main/PKGBUILD"
+CHROMIUM_API_URL="https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Linux&num=1"
 
 echo "=== Checking for upstream Chromium updates ==="
 
@@ -15,9 +15,9 @@ if [[ ! -f "PKGBUILD" ]]; then
     exit 2
 fi
 
-# Fetch upstream version
-echo "Fetching upstream version from Arch Linux..."
-UPSTREAM_VERSION=$(curl -s "$ARCH_PKGBUILD_URL" | grep '^pkgver=' | head -1 | cut -d'=' -f2)
+# Fetch upstream version from official Chromium API
+echo "Fetching upstream version from Chromium Dashboard..."
+UPSTREAM_VERSION=$(curl -s "$CHROMIUM_API_URL" | grep -o '"version":"[^"]*' | head -1 | cut -d'"' -f4)
 
 if [[ -z "$UPSTREAM_VERSION" ]]; then
     echo "Error: Failed to fetch upstream version"
