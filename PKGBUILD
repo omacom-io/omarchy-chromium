@@ -3,7 +3,7 @@
 
 pkgname=omarchy-chromium
 pkgver=141.0.7390.107
-pkgrel=2
+pkgrel=3
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
@@ -267,7 +267,7 @@ EOF
             ;;
         esac
         echo "Applying $(basename "$patch")..."
-        patch -Np1 -i "$patch" || true  # Continue even if patch fails (might be already applied)
+        patch -Np1 -i "$patch"
       fi
     done
     

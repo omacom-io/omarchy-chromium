@@ -273,7 +273,7 @@ EOF
             ;;
         esac
         echo "Applying $(basename "$patch")..."
-        patch -Np1 -i "$patch" || true  # Continue even if patch fails (might be already applied)
+        patch -Np1 -i "$patch"
       fi
     done
     

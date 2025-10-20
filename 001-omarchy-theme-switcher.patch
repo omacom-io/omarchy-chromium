@@ -201,23 +201,15 @@ diff --git a/chrome/browser/themes/theme_service_unittest.cc b/chrome/browser/th
 index cbd810b..e220148 100644
 --- a/chrome/browser/themes/theme_service_unittest.cc
 +++ b/chrome/browser/themes/theme_service_unittest.cc
-@@ -11,6 +11,7 @@
- 
+@@ -7,6 +7,7 @@
+
  #include <cmath>
- 
+
 +#include "base/command_line.h"
+ #include "base/compiler_specific.h"
  #include "base/containers/fixed_flat_map.h"
  #include "base/files/file_util.h"
- #include "base/memory/raw_ptr.h"
-@@ -36,6 +37,7 @@
- #include "chrome/browser/ui/color/chrome_color_mixers.h"
- #include "chrome/common/buildflags.h"
- #include "chrome/common/chrome_paths.h"
-+#include "chrome/common/chrome_switches.h"
- #include "chrome/common/pref_names.h"
- #include "chrome/test/base/testing_browser_process.h"
- #include "chrome/test/base/testing_profile.h"
-@@ -1050,4 +1052,229 @@
+@@ -1050,4 +1051,229 @@
              ui::mojom::BrowserColorVariant::kSystem);
  }
  
