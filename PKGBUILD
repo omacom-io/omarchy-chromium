@@ -3,7 +3,7 @@
 
 pkgname=omarchy-chromium
 pkgver=141.0.7390.107
-pkgrel=3
+pkgrel=5
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
