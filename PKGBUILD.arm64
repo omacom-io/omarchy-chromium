@@ -2,8 +2,8 @@
 # Maintainer: David Heinemeier Hansson <david@hey.com>
 
 pkgname=omarchy-chromium
-pkgver=143.0.7499.40
-pkgrel=14
+pkgver=143.0.7499.109
+pkgrel=15
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
