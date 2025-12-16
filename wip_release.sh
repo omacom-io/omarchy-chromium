@@ -9,6 +9,12 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHROMIUM_SRC="$HOME/omarchy-chromium-src/src"
 GITHUB_REPO="omacom-io/omarchy-chromium"
 
+# Add depot_tools to PATH for autoninja
+export PATH="$HOME/depot_tools:$PATH"
+
+# Set siso credential helper for remote builds
+export SISO_CREDENTIAL_HELPER=gcloud
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -88,7 +94,11 @@ done
 check_prereqs() {
     local missing=()
     command -v gh >/dev/null 2>&1 || missing+=("gh (github-cli)")
-    command -v autoninja >/dev/null 2>&1 || missing+=("autoninja (depot_tools)")
+
+    # Only require autoninja if we're going to actually build
+    if [[ "$PREPARE" == "0" && "$SKIP_BUILD" == "0" && "$DRY_RUN" == "0" ]]; then
+        command -v autoninja >/dev/null 2>&1 || missing+=("autoninja (depot_tools)")
+    fi
 
     if [[ ! -f "$CURRENT_DIR/PKGBUILD" ]]; then
         error "PKGBUILD not found in $CURRENT_DIR"
@@ -205,7 +215,7 @@ do_build() {
         gn gen out/Release
     fi
 
-    info "Running autoninja..."
+    info "Running autoninja build (this will take several hours)..."
     autoninja -C out/Release chrome chrome_sandbox chromedriver
 
     info "Build complete!"
@@ -273,21 +283,27 @@ do_release() {
 
     cd "$CURRENT_DIR"
 
-    # Find the package file
-    PACKAGE_FILE=$(ls -1 ${PKGNAME}-*wip*-x86_64.pkg.tar.zst 2>/dev/null | head -1)
+    # Set expected package filename
+    PACKAGE_FILE="${PKGNAME}-${WIP_VERSION}-x86_64.pkg.tar.zst"
 
-    if [[ -z "$PACKAGE_FILE" || ! -f "$PACKAGE_FILE" ]]; then
-        # Try standard naming
-        PACKAGE_FILE="${PKGNAME}-${WIP_VERSION}-x86_64.pkg.tar.zst"
+    if [[ "$DRY_RUN" == "0" ]]; then
+        # Find the actual package file
+        local found_file=$(ls -1 ${PKGNAME}-*wip*-x86_64.pkg.tar.zst 2>/dev/null | head -1)
+
+        if [[ -n "$found_file" && -f "$found_file" ]]; then
+            PACKAGE_FILE="$found_file"
+        fi
+
+        if [[ ! -f "$PACKAGE_FILE" ]]; then
+            error "Package file not found: $PACKAGE_FILE"
+            error "Run without --skip-build to create it first"
+            exit 1
+        fi
+
+        PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
+    else
+        PACKAGE_SIZE="~120M (estimated)"
     fi
-
-    if [[ ! -f "$PACKAGE_FILE" ]]; then
-        error "Package file not found: $PACKAGE_FILE"
-        error "Run without --skip-build to create it first"
-        exit 1
-    fi
-
-    PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
 
     local RELEASE_TITLE="WIP: Omarchy Chromium ${WIP_VERSION}"
     local RELEASE_NOTES="## WIP/Beta Release
