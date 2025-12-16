@@ -9,10 +9,8 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHROMIUM_SRC="$HOME/omarchy-chromium-src/src"
 GITHUB_REPO="omacom-io/omarchy-chromium"
 
-# Add depot_tools to PATH for autoninja
-export PATH="$HOME/depot_tools:$PATH"
-
-# Set siso credential helper for remote builds
+# Build environment
+export PATH=~/depot_tools/:$PATH
 export SISO_CREDENTIAL_HELPER=gcloud
 
 # Colors
@@ -215,7 +213,7 @@ do_build() {
         gn gen out/Release
     fi
 
-    info "Running autoninja build (this will take several hours)..."
+    info "Running autoninja..."
     autoninja -C out/Release chrome chrome_sandbox chromedriver
 
     info "Build complete!"
@@ -237,12 +235,17 @@ do_package() {
     fi
 
     # Create a temporary PKGBUILD.wip with WIP version
+    # Note: pkgrel must be numeric, so we use date-based number (YYYYMMDD)
+    # The WIP suffix goes in the final filename via rename
     info "Creating temporary PKGBUILD for WIP version..."
     cp PKGBUILD PKGBUILD.wip.tmp
 
+    # Use date-based numeric pkgrel for makepkg compatibility
+    local DATE_PKGREL=$(date +%Y%m%d)
+
     # Update version in temp PKGBUILD
     sed -i "s/^pkgver=.*/pkgver=${PKGVER}/" PKGBUILD.wip.tmp
-    sed -i "s/^pkgrel=.*/pkgrel=wip.${SUFFIX}/" PKGBUILD.wip.tmp
+    sed -i "s/^pkgrel=.*/pkgrel=${DATE_PKGREL}/" PKGBUILD.wip.tmp
 
     # Clean previous build artifacts
     rm -rf src/ pkg/
@@ -258,20 +261,17 @@ do_package() {
     # Clean up temp PKGBUILD
     rm -f PKGBUILD.wip.tmp
 
-    # Find the created package (name might vary slightly)
-    PACKAGE_FILE=$(ls -1 ${PKGNAME}-*-x86_64.pkg.tar.zst 2>/dev/null | head -1)
+    # Find the created package
+    PACKAGE_FILE=$(ls -1t ${PKGNAME}-${PKGVER}-${DATE_PKGREL}-x86_64.pkg.tar.zst 2>/dev/null | head -1)
 
     if [[ -z "$PACKAGE_FILE" || ! -f "$PACKAGE_FILE" ]]; then
         error "Package file not found after build"
         exit 1
     fi
 
-    # Rename to WIP version if needed
-    local EXPECTED_FILE="${PKGNAME}-${WIP_VERSION}-x86_64.pkg.tar.zst"
-    if [[ "$PACKAGE_FILE" != "$EXPECTED_FILE" ]]; then
-        mv "$PACKAGE_FILE" "$EXPECTED_FILE"
-        PACKAGE_FILE="$EXPECTED_FILE"
-    fi
+    # Store for use in release function
+    export PACKAGE_FILE
+    export DATE_PKGREL
 
     PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
     info "Package created: $PACKAGE_FILE ($PACKAGE_SIZE)"
@@ -283,25 +283,24 @@ do_release() {
 
     cd "$CURRENT_DIR"
 
-    # Set expected package filename
-    PACKAGE_FILE="${PKGNAME}-${WIP_VERSION}-x86_64.pkg.tar.zst"
-
+    # For --skip-build, we need to find the package file
     if [[ "$DRY_RUN" == "0" ]]; then
-        # Find the actual package file
-        local found_file=$(ls -1 ${PKGNAME}-*wip*-x86_64.pkg.tar.zst 2>/dev/null | head -1)
-
-        if [[ -n "$found_file" && -f "$found_file" ]]; then
-            PACKAGE_FILE="$found_file"
+        if [[ -z "${PACKAGE_FILE:-}" || ! -f "${PACKAGE_FILE:-}" ]]; then
+            # Find most recent package with date-based pkgrel (8 digits)
+            PACKAGE_FILE=$(ls -1t ${PKGNAME}-${PKGVER}-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-x86_64.pkg.tar.zst 2>/dev/null | head -1)
         fi
 
-        if [[ ! -f "$PACKAGE_FILE" ]]; then
-            error "Package file not found: $PACKAGE_FILE"
+        if [[ -z "${PACKAGE_FILE:-}" || ! -f "${PACKAGE_FILE:-}" ]]; then
+            error "Package file not found"
             error "Run without --skip-build to create it first"
             exit 1
         fi
 
         PACKAGE_SIZE=$(du -h "$PACKAGE_FILE" | cut -f1)
     else
+        # Dry run - use expected filename
+        local DATE_PKGREL=$(date +%Y%m%d)
+        PACKAGE_FILE="${PKGNAME}-${PKGVER}-${DATE_PKGREL}-x86_64.pkg.tar.zst"
         PACKAGE_SIZE="~120M (estimated)"
     fi
 
@@ -393,8 +392,8 @@ main() {
     if [[ "$DRY_RUN" == "0" ]]; then
         echo ""
         echo "Users can test with:"
-        echo "  wget https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/${PKGNAME}-${WIP_VERSION}-x86_64.pkg.tar.zst"
-        echo "  sudo pacman -U ${PKGNAME}-${WIP_VERSION}-x86_64.pkg.tar.zst"
+        echo "  wget https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/${PACKAGE_FILE}"
+        echo "  sudo pacman -U ${PACKAGE_FILE}"
     fi
 }
 
