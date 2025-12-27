@@ -33,21 +33,23 @@ Usage:
   $(basename "$0") [options] [suffix]
 
 Options:
-  --prepare       Reset source, checkout tag, apply all patches
-  --skip-build    Use existing build, just publish release
-  --dry-run       Show what would happen without doing it
-  -h, --help      Show this help
+  --prepare         Reset source, checkout tag, apply all patches
+  --tag=VERSION     Use VERSION instead of PKGVER for checkout (with --prepare)
+  --skip-build      Use existing build, just publish release
+  --dry-run         Show what would happen without doing it
+  -h, --help        Show this help
 
 Examples:
-  $(basename "$0") --prepare              # Get clean slate with all patches
-  $(basename "$0")                        # Build and release as wip-YYYYMMDD
-  $(basename "$0") theme-fix              # Build and release as wip-theme-fix
-  $(basename "$0") --skip-build test1     # Publish existing build as wip-test1
+  $(basename "$0") --prepare                        # Prepare with PKGBUILD version
+  $(basename "$0") --prepare --tag=142.0.7444.175   # Prepare with specific version
+  $(basename "$0")                                  # Build and release as wip-YYYYMMDD
+  $(basename "$0") theme-fix                        # Build and release as wip-theme-fix
+  $(basename "$0") --skip-build test1               # Publish existing build as wip-test1
 
 Workflow:
-  1. $(basename "$0") --prepare           # Reset and apply patches
+  1. $(basename "$0") --prepare [--tag=VERSION]   # Reset and apply patches
   2. # Make manual changes to ~/omarchy-chromium-src/src
-  3. $(basename "$0") my-feature          # Build and release WIP
+  3. $(basename "$0") my-feature                  # Build and release WIP
 
 See WIP_WORKFLOW.md for detailed documentation.
 EOF
@@ -59,6 +61,7 @@ PREPARE=0
 SKIP_BUILD=0
 DRY_RUN=0
 SUFFIX=""
+CUSTOM_TAG=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -72,6 +75,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dry-run)
             DRY_RUN=1
+            shift
+            ;;
+        --tag=*)
+            CUSTOM_TAG="${1#--tag=}"
             shift
             ;;
         -h|--help)
@@ -142,12 +149,15 @@ do_prepare() {
         git clean -fd
     fi
 
-    info "Checking out version tag: $PKGVER"
+    # Use custom tag if specified, otherwise use PKGVER from PKGBUILD
+    local CHECKOUT_TAG="${CUSTOM_TAG:-$PKGVER}"
+
+    info "Checking out version tag: $CHECKOUT_TAG"
     if [[ "$DRY_RUN" == "1" ]]; then
-        echo "  [DRY-RUN] git checkout tags/$PKGVER"
+        echo "  [DRY-RUN] git checkout tags/$CHECKOUT_TAG"
     else
-        git checkout "tags/$PKGVER" 2>/dev/null || {
-            warn "Tag $PKGVER not found, staying on current HEAD"
+        git checkout "tags/$CHECKOUT_TAG" 2>/dev/null || {
+            warn "Tag $CHECKOUT_TAG not found, staying on current HEAD"
         }
     fi
 
@@ -374,6 +384,9 @@ main() {
     echo ""
 
     if [[ "$PREPARE" == "1" ]]; then
+        if [[ -n "$CUSTOM_TAG" ]]; then
+            info "Custom tag: $CUSTOM_TAG"
+        fi
         do_prepare
         exit 0
     fi
