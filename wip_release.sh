@@ -121,16 +121,19 @@ check_prereqs() {
     fi
 }
 
-# Get version from PKGBUILD
+# Get version from PKGBUILD or custom tag
 get_version() {
     PKGNAME=$(grep '^pkgname=' "$CURRENT_DIR/PKGBUILD" | cut -d'=' -f2)
     PKGVER=$(grep '^pkgver=' "$CURRENT_DIR/PKGBUILD" | cut -d'=' -f2)
+
+    # Use custom tag if specified, otherwise use PKGVER
+    BUILD_VERSION="${CUSTOM_TAG:-$PKGVER}"
 
     # Generate WIP version
     if [[ -z "$SUFFIX" ]]; then
         SUFFIX=$(date +%Y%m%d)
     fi
-    WIP_VERSION="${PKGVER}-wip-${SUFFIX}"
+    WIP_VERSION="${BUILD_VERSION}-wip-${SUFFIX}"
     RELEASE_TAG="v${WIP_VERSION}"
 }
 
@@ -266,7 +269,7 @@ do_package() {
     local DATE_PKGREL=$(date +%Y%m%d)
 
     # Update version in temp PKGBUILD
-    sed -i "s/^pkgver=.*/pkgver=${PKGVER}/" PKGBUILD.wip.tmp
+    sed -i "s/^pkgver=.*/pkgver=${BUILD_VERSION}/" PKGBUILD.wip.tmp
     sed -i "s/^pkgrel=.*/pkgrel=${DATE_PKGREL}/" PKGBUILD.wip.tmp
 
     # Clean previous build artifacts
@@ -284,7 +287,7 @@ do_package() {
     rm -f PKGBUILD.wip.tmp
 
     # Find the created package
-    PACKAGE_FILE=$(ls -1t ${PKGNAME}-${PKGVER}-${DATE_PKGREL}-x86_64.pkg.tar.zst 2>/dev/null | head -1)
+    PACKAGE_FILE=$(ls -1t ${PKGNAME}-${BUILD_VERSION}-${DATE_PKGREL}-x86_64.pkg.tar.zst 2>/dev/null | head -1)
 
     if [[ -z "$PACKAGE_FILE" || ! -f "$PACKAGE_FILE" ]]; then
         error "Package file not found after build"
@@ -309,7 +312,7 @@ do_release() {
     if [[ "$DRY_RUN" == "0" ]]; then
         if [[ -z "${PACKAGE_FILE:-}" || ! -f "${PACKAGE_FILE:-}" ]]; then
             # Find most recent package with date-based pkgrel (8 digits)
-            PACKAGE_FILE=$(ls -1t ${PKGNAME}-${PKGVER}-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-x86_64.pkg.tar.zst 2>/dev/null | head -1)
+            PACKAGE_FILE=$(ls -1t ${PKGNAME}-${BUILD_VERSION}-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-x86_64.pkg.tar.zst 2>/dev/null | head -1)
         fi
 
         if [[ -z "${PACKAGE_FILE:-}" || ! -f "${PACKAGE_FILE:-}" ]]; then
@@ -322,7 +325,7 @@ do_release() {
     else
         # Dry run - use expected filename
         local DATE_PKGREL=$(date +%Y%m%d)
-        PACKAGE_FILE="${PKGNAME}-${PKGVER}-${DATE_PKGREL}-x86_64.pkg.tar.zst"
+        PACKAGE_FILE="${PKGNAME}-${BUILD_VERSION}-${DATE_PKGREL}-x86_64.pkg.tar.zst"
         PACKAGE_SIZE="~120M (estimated)"
     fi
 
@@ -333,7 +336,7 @@ do_release() {
 > It may contain bugs or incomplete features.
 
 ### Version
-- Base: Chromium ${PKGVER}
+- Base: Chromium ${BUILD_VERSION}
 - WIP Tag: ${SUFFIX}
 
 ### Installation (Testing Only)
@@ -390,15 +393,15 @@ main() {
     get_version
 
     info "Package: $PKGNAME"
-    info "Base version: $PKGVER"
+    info "Base version: $BUILD_VERSION"
+    if [[ -n "$CUSTOM_TAG" ]]; then
+        info "Custom tag: $CUSTOM_TAG (PKGBUILD: $PKGVER)"
+    fi
     info "WIP version: $WIP_VERSION"
     info "Release tag: $RELEASE_TAG"
     echo ""
 
     if [[ "$PREPARE" == "1" ]]; then
-        if [[ -n "$CUSTOM_TAG" ]]; then
-            info "Custom tag: $CUSTOM_TAG"
-        fi
         do_prepare
         exit 0
     fi
