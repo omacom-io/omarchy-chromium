@@ -161,6 +161,18 @@ do_prepare() {
         }
     fi
 
+    info "Syncing dependencies with gclient..."
+    cd "$CHROMIUM_SRC/.."
+    if [[ "$DRY_RUN" == "1" ]]; then
+        echo "  [DRY-RUN] gclient sync -D --force"
+    else
+        gclient sync -D --force || {
+            error "gclient sync failed"
+            exit 1
+        }
+    fi
+    cd "$CHROMIUM_SRC"
+
     info "Applying patches..."
     cd "$CURRENT_DIR"
 
