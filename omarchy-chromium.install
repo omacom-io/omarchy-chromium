@@ -1,0 +1,32 @@
+#!/usr/bin/bash
+# omarchy-chromium install script
+# This script handles post-installation and post-upgrade tasks.
+
+post_upgrade() {
+  # Clear GPU shader cache on upgrade to prevent rendering issues.
+  # Some cached shaders from older versions can cause video flickering,
+  # rendering glitches, or GPU process crashes after browser upgrades.
+  # See: https://issues.chromium.org/issues/469458278
+  echo ":: Clearing Chromium GPU cache for all users..."
+
+  for user_home in /home/*; do
+    if [ -d "$user_home" ]; then
+      # Chromium
+      rm -rf "$user_home/.config/chromium/Default/GPUCache" 2>/dev/null
+      rm -rf "$user_home/.config/chromium/ShaderCache" 2>/dev/null
+      # Also clear for additional profiles
+      rm -rf "$user_home/.config/chromium/Profile "*/GPUCache 2>/dev/null
+      rm -rf "$user_home/.config/chromium/Profile "*/ShaderCache 2>/dev/null
+    fi
+  done
+
+  # Also clear for root user if applicable
+  if [ -d /root/.config/chromium ]; then
+    rm -rf /root/.config/chromium/Default/GPUCache 2>/dev/null
+    rm -rf /root/.config/chromium/ShaderCache 2>/dev/null
+  fi
+
+  echo ":: GPU cache cleared. This prevents video rendering issues after upgrades."
+}
+
+# vim: set ts=2 sw=2 et:
