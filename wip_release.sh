@@ -183,7 +183,7 @@ do_prepare() {
         "001-omarchy-theme-switcher.patch"
         "002-omarchy-policy-reload.patch"
         "003-policy-theme-fixes.patch"
-        "004-policy-theme-accent.patch"
+        # Note: 004-policy-theme-accent.patch removed - upstreamed in Chromium 144
     )
 
     for patch in "${patches[@]}"; do
