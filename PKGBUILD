@@ -3,7 +3,7 @@
 
 pkgname=omarchy-chromium
 pkgver=144.0.7559.132
-pkgrel=22
+pkgrel=23
 _launcher_ver=8
 _manual_clone=0
 _system_clang=1
@@ -503,6 +503,8 @@ package() {
     -e 's/@@MENUNAME@@/Chromium/g' \
     -e 's/@@PACKAGE@@/chromium/g' \
     -e 's/@@USR_BIN_SYMLINK_NAME@@/chromium/g' \
+    -e 's|@@URI_SCHEME@@|x-scheme-handler/chromium;|g' \
+    -e 's/@@EXTRA_DESKTOP_ENTRIES@@//g' \
     "$pkgdir/usr/share/applications/chromium.desktop" \
     "$pkgdir/usr/share/man/man1/chromium.1"
 
