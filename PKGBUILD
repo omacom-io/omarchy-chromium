@@ -27,6 +27,7 @@ optdepends=('pipewire: WebRTC desktop sharing under Wayland'
             'kwallet: support for storing passwords in KWallet on Plasma'
             'upower: Battery Status API support')
 options=('!lto') # Chromium adds its own flags for ThinLTO
+install=omarchy-chromium.install
 
 # NEW: Conditional source handling
 if (( _use_chromium_src )); then
