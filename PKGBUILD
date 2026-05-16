@@ -14,6 +14,8 @@ pkgdesc="A web browser built for speed, simplicity, and security, with patches f
 arch=('x86_64')
 url="https://github.com/omacom-io/omarchy-chromium"
 license=('BSD-3-Clause')
+provides=('chromium')
+conflicts=('chromium')
 depends=('gtk3' 'nss' 'alsa-lib' 'xdg-utils' 'libxss' 'libcups' 'libgcrypt'
          'ttf-liberation' 'systemd' 'dbus' 'libpulse' 'pciutils' 'libva'
          'libffi' 'desktop-file-utils' 'hicolor-icon-theme')
